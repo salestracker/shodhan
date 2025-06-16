@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SearchResult } from './SearchResults';
+import type { SearchResult } from './SearchEngine';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
