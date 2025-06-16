@@ -29,11 +29,18 @@ interface SearchResultsProps {
 }
 
 const SearchResults: React.FC<SearchResultsProps> = ({ results, query }) => {
-  console.log('[DEBUG] SearchResults received:', { results, query });
+  console.log('[DEBUG] SearchResults render - query:', query);
+  console.log('[DEBUG] SearchResults render - results count:', results.length);
+  console.log('[DEBUG] SearchResults render - first result:', results[0]?.title);
+  
   if (results.length === 0) {
-    console.log('[DEBUG] No results to render');
+    console.log('[DEBUG] No results to render - returning null');
     return null;
   }
+
+  // Add a unique key to force re-render when results change
+  const resultsKey = results.map(r => r.id).join('-');
+  console.log('[DEBUG] Results key:', resultsKey);
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 90) return 'bg-green-500';
@@ -159,9 +166,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, query }) => {
         <p className="text-gray-600 mt-2">{results.length} intelligent answers found</p>
       </div>
       
-      <div className="grid gap-6">
-        {results.map((result, index) => (
-          <Card key={result.id} className="group hover:shadow-xl transition-all duration-300 border-l-4 border-l-purple-500 hover:border-l-blue-500">
+      <div key={resultsKey} className="grid gap-6">
+        {results.map((result) => (
+          <Card 
+            key={`${result.id}-${resultsKey}`}
+            className="group hover:shadow-xl transition-all duration-300 border-l-4 border-l-purple-500 hover:border-l-blue-500"
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold text-gray-800 group-hover:text-purple-700 transition-colors">

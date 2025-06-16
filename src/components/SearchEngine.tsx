@@ -26,9 +26,12 @@ interface SearchResult {
 const SearchEngine: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
-  const { addToHistory, resetSearch, loadHistory, searchHistory, toggleHistory } = useAppContext(); // Destructure context methods
+  const { addToHistory, resetSearch, loadHistory, searchHistory, toggleHistory } = useAppContext();
 
-  const [results, setResults] = useState<SearchResult[]>([]);
+  // Separate state for displayed results to ensure proper re-rendering
+  const [displayedResults, setDisplayedResults] = useState<SearchResult[]>([]);
+  const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
+  const [results, setResults] = useState<SearchResult[]>([]); // Keep for internal tracking
   useEffect(() => {
     console.log('[DEBUG] results state changed:', results);
     if (results.length > 0) {
@@ -111,8 +114,10 @@ const SearchEngine: React.FC = () => {
         };
         addToHistory(historyEntry);
         setResults([rootResult]);
+        setDisplayedResults([rootResult]); // Update displayed results
       } else {
         setResults([]);
+        setDisplayedResults([]); // Clear displayed results
       }
       return newResults;
     },
@@ -139,22 +144,27 @@ const SearchEngine: React.FC = () => {
   const handleSearch = async (query: string, resultId?: string) => {
     console.log('[DEBUG] handleSearch called', { query, resultId });
     if (!query.trim()) return;
+    
     setHasSearched(true);
-    setResults([]);
+    setDisplayedResults([]); // Clear displayed results immediately
+    setResults([]); // Clear internal results state
 
     if (resultId) {
       console.log('[DEBUG] Loading from cache with resultId:', resultId);
+      setIsLoadingFromCache(true);
       try {
         const cachedThread = await getConversationThread(resultId);
-        console.log('[DEBUG] Retrieved cached thread:', cachedThread);
         if (cachedThread) {
           console.log('[DEBUG] Setting results from cache:', cachedThread);
-          setResults([cachedThread]);
-          // Don't set currentQuery for cached results to prevent useQuery from running
-          return;
+          setDisplayedResults([{ ...cachedThread }]);
+          setResults([{ ...cachedThread }]);
+          setIsLoadingFromCache(false);
+          return; // Skip API call for cached results
         }
       } catch (error) {
         console.error('[DEBUG] Error loading cached thread:', error);
+        setIsLoadingFromCache(false);
+        // Fall through to fresh search if cache fails
       }
     }
     
@@ -245,10 +255,10 @@ const SearchEngine: React.FC = () => {
         )}
 
         {/* Search Results */}
-        {results.length > 0 && (
+        {displayedResults.length > 0 && (
           <div className="w-full max-w-4xl mx-auto mt-8">
             {(() => {
-              console.log('[DEBUG] Rendering results:', results);
+              console.log('[DEBUG] Rendering displayedResults:', displayedResults);
               return null;
             })()}
             {error ? (
@@ -264,7 +274,7 @@ const SearchEngine: React.FC = () => {
                 onFollowUp={handleFollowUpSearch}
               />
             ) : (
-              results.map(result => (
+              displayedResults.map(result => (
                 <ThreadedSearchResult
                   key={result.id}
                   result={result}
@@ -272,6 +282,14 @@ const SearchEngine: React.FC = () => {
                 />
               ))
             )}
+          </div>
+        )}
+        {(isLoadingFromCache && displayedResults.length === 0) && (
+          <div className="text-center mt-12">
+            <div className="inline-flex items-center space-x-2 text-purple-600">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+              <span className="text-lg font-medium">Loading from history...</span>
+            </div>
           </div>
         )}
       </div>
