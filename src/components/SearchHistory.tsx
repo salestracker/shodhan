@@ -35,11 +35,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onSelect }) => {
               e.preventDefault();
               e.stopPropagation();
               console.log('[DEBUG] History item clicked:', item);
-              if (item.resultId) {
-                onSelect(item.query, item.resultId);
-              } else {
-                onSelect(item.query);
-              }
+              onSelect(item.id, item.query);
             }}
           >
             {item.query}

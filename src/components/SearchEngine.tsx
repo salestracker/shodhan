@@ -4,6 +4,7 @@ import { getSearchHistory, getConversationThread } from '@/services/cacheService
 import { useAppContext } from '@/contexts/AppContext';
 import { Home, Brain, History, Sparkles } from 'lucide-react';
 import SearchBar from './SearchBar';
+import { searchWithDeepSeek } from '@/services/searchService';
 
 export type SearchResult = {
   id: string;
@@ -16,6 +17,7 @@ export type SearchResult = {
   parentId?: string;
   followUpQuery?: string;
   replies?: SearchResult[];
+  isReplying?: boolean;
 };
 
 export const SearchResultType = {
@@ -37,8 +39,12 @@ export interface HistoryItem {
   timestamp: number;
 }
 
-const SearchEngine: React.FC = () => {
-  const { toggleHistory } = useAppContext();
+interface SearchEngineProps {
+  setHandleHistoryClick?: (func: (historyId: string, query: string) => void) => void;
+}
+
+const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) => {
+  const { toggleHistory, addToHistory } = useAppContext();
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [currentSearchResult, setCurrentSearchResult] = useState<SearchResult | null>(null);
@@ -60,52 +66,87 @@ const SearchEngine: React.FC = () => {
     loadHistory();
   }, []);
 
-  // Handle history item click
-  const handleHistoryClick = useCallback(async (historyId: string) => {
-    console.log(`History item clicked: ${historyId}`);
-    setSelectedHistoryId(historyId);
-    setIsLoading(true);
-    setCurrentSearchResult(null);
-    
-    try {
-      const fullResult = await getConversationThread(historyId);
-      console.log("Retrieved cached result:", fullResult);
-      
-      if (fullResult) {
-        setTimeout(() => {
-          setCurrentSearchResult({...fullResult});
-          setForceUpdate(prev => prev + 1);
-        }, 0);
-      } else {
-        console.warn(`No cached result found for ID: ${historyId}`);
-      }
-    } catch (error) {
-      console.error(`Error retrieving cached result for ${historyId}:`, error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   // Handle new searches
-  const handleSearch = async (query: string) => {
+  const handleSearch = async (query: string, parentResult?: SearchResult) => {
     if (!query.trim()) return;
     setIsLoading(true);
     setCurrentSearchResult(null);
     setSelectedHistoryId(null);
     
-    // TODO: Implement actual search functionality
-    // For now just create a mock result
-    const mockResult = {
-      id: Date.now().toString(),
-      title: `SearchGPT: ${query}`,
-      content: `Here are the results for your query "${query}":\n\n1. Example result 1\n2. Example result 2\n3. Example result 3`,
-      confidence: 95,
-      category: 'SearchGPT',
-      timestamp: new Date().toISOString()
-    };
-    setCurrentSearchResult(mockResult);
-    setIsLoading(false);
+    try {
+      const results = await searchWithDeepSeek(query, parentResult);
+      if (results.length > 0) {
+        setCurrentSearchResult(results[0]);
+        // Add to search history
+        addToHistory({
+          id: results[0].id,
+          query: query,
+          timestamp: Date.now(),
+          resultId: results[0].id
+        });
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      setCurrentSearchResult({
+        id: `error-${Date.now()}`,
+        title: `SearchGPT: ${query}`,
+        content: 'Failed to get search results. Please try again.',
+        confidence: 0,
+        category: 'Error',
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Handle follow-up searches
+  const handleFollowUpSearch = async (parentId: string, query: string) => {
+    if (!query.trim() || !currentSearchResult) return;
+    
+    // Set isReplying on the current result to show localized loading
+    const updatedResultWithLoading = {
+      ...currentSearchResult,
+      isReplying: true
+    };
+    setCurrentSearchResult(updatedResultWithLoading);
+    
+    try {
+      const results = await searchWithDeepSeek(query, currentSearchResult);
+      if (results.length > 0) {
+        // Add the follow-up result as a reply to the current result
+        const updatedResult = {
+          ...currentSearchResult,
+          replies: [...(currentSearchResult.replies || []), results[0]],
+          isReplying: false
+        };
+        setCurrentSearchResult(updatedResult);
+        setForceUpdate(prev => prev + 1); // Force re-render
+      }
+    } catch (error) {
+      console.error('Follow-up search failed:', error);
+      // Reset isReplying on error
+      setCurrentSearchResult({
+        ...currentSearchResult,
+        isReplying: false
+      });
+      setForceUpdate(prev => prev + 1); // Force re-render on error
+    }
+  };
+
+  // Handle history item click
+  const handleHistoryClick = useCallback((historyId: string, query: string) => {
+    console.log(`History item clicked: ${historyId}`);
+    // Use the same search logic as a new query to leverage built-in caching
+    handleSearch(query);
+  }, [handleSearch]);
+
+  // Set the handleHistoryClick function for AppLayout to use
+  useEffect(() => {
+    if (setHandleHistoryClick) {
+      setHandleHistoryClick(handleHistoryClick);
+    }
+  }, [handleHistoryClick, setHandleHistoryClick]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
@@ -153,6 +194,7 @@ const SearchEngine: React.FC = () => {
           result={currentSearchResult} 
           isLoading={isLoading}
           key={`${currentSearchResult?.id || 'empty'}-${forceUpdate}`}
+          onFollowUp={handleFollowUpSearch}
         />
       </div>
     </div>

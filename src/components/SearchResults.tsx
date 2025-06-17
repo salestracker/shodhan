@@ -1,16 +1,53 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { SearchResult } from './SearchEngine';
 import './SearchResults.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import ThreadedSearchResult from './ThreadedSearchResult';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
 
 interface SearchResultsProps {
   result: SearchResult | null;
   isLoading: boolean;
+  onFollowUp?: (parentId: string, query: string) => Promise<void>;
 }
 
-const SearchResults: React.FC<SearchResultsProps> = ({ result, isLoading }) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ result, isLoading, onFollowUp }) => {
+  const [followUpQuery, setFollowUpQuery] = useState<string>('');
+  
   useEffect(() => {
     console.log("SearchResults rendered with result:", result);
   }, [result]);
+
+  // Parse sources to create a map of citation numbers to URLs
+  const citationMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    if (result && result.sources) {
+      const lines = result.sources.split('\n');
+      lines.forEach(line => {
+        const match = line.match(/^\[(\d+)\]\s*(?:\[.*?\]\((.*?)\)|.*)/);
+        if (match) {
+          const citationNumber = match[1];
+          const url = match[2] || '#'; // Default to '#' if no URL is found
+          map[citationNumber] = url;
+        }
+      });
+    }
+    return map;
+  }, [result]);
+
+  const handleFollowUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (followUpQuery.trim() && onFollowUp && result) {
+      console.log("Submitting follow-up query for result ID:", result.id, "Query:", followUpQuery);
+      await onFollowUp(result.id, followUpQuery);
+      setFollowUpQuery('');
+    } else {
+      console.log("Follow-up submission blocked. onFollowUp:", !!onFollowUp, "result:", !!result, "query:", followUpQuery);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -70,8 +107,62 @@ const SearchResults: React.FC<SearchResultsProps> = ({ result, isLoading }) => {
           </div>
         </div>
         <div className="prose max-w-none">
-          {result.content}
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+            components={{
+              a: ({ href, children }: { href: string; children: React.ReactNode }) => (
+                <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {children}
+                </a>
+              ),
+              ul: ({ children }: { children: React.ReactNode }) => (
+                <ul className="list-disc pl-5 space-y-1">{children}</ul>
+              ),
+              ol: ({ children }: { children: React.ReactNode }) => (
+                <ol className="list-decimal pl-5 space-y-1">{children}</ol>
+              ),
+              li: ({ children }: { children: React.ReactNode }) => (
+                <li className="ml-2">{children}</li>
+              ),
+              text: ({ value }: { value: string }) => {
+                // Replace citation numbers with superscript hyperlinks
+                return value.replace(/\[(\d+)\]/g, (match, number) => {
+                  const url = citationMap[number] || '#';
+                  return `<sup><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${number}]</a></sup>`;
+                });
+              }
+            }}
+          >
+            {result.content}
+          </ReactMarkdown>
         </div>
+        <div className="mt-4">
+          <form onSubmit={handleFollowUpSubmit} className="flex gap-2">
+            <Input
+              type="text"
+              value={followUpQuery}
+              onChange={(e) => setFollowUpQuery(e.target.value)}
+              placeholder="Ask a follow-up question..."
+              className="flex-1"
+            />
+            <Button type="submit" disabled={!followUpQuery.trim()}>
+              Ask
+            </Button>
+          </form>
+        </div>
+        {result.replies && result.replies.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Follow-up Responses</h3>
+            {result.replies.map((reply, index) => (
+              <ThreadedSearchResult 
+                key={index} 
+                result={reply} 
+                onFollowUp={onFollowUp}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import SearchEngine from './SearchEngine';
 import SearchHistory from './SearchHistory';
 import { Sheet, SheetContent, SheetTitle } from './ui/sheet';
@@ -6,6 +6,16 @@ import { useAppContext } from '@/contexts/AppContext';
 
 const AppLayout: React.FC = () => {
   const { isHistoryOpen, toggleHistory } = useAppContext();
+  
+  // This function will be passed from SearchEngine
+  let handleHistoryClick: (historyId: string, query: string) => void = () => {
+    console.log("handleHistoryClick not yet initialized");
+  };
+
+  // Function to set the handleHistoryClick from SearchEngine
+  const setHandleHistoryClick = (func: (historyId: string, query: string) => void) => {
+    handleHistoryClick = func;
+  };
 
   return (
     <div className="min-h-screen">
@@ -20,13 +30,13 @@ const AppLayout: React.FC = () => {
               Search History
               <span id="history-description" className="sr-only">List of previously searched queries that can be selected</span>
             </SheetTitle>
-            <SearchHistory onSelect={(query, resultId) => {
+            <SearchHistory onSelect={(historyId, query) => {
               toggleHistory(); // Close the sheet
-              // The actual search will be handled by the SearchEngine component
+              handleHistoryClick(historyId, query); // Trigger the search
             }} />
           </div>
         </SheetContent>
-        <SearchEngine />
+        <SearchEngine setHandleHistoryClick={setHandleHistoryClick} />
       </Sheet>
     </div>
   );

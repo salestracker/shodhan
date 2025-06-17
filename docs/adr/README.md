@@ -11,6 +11,7 @@ An ADR is a document that captures an important architectural decision along wit
 2. [002-frontend-technology-stack.md](002-frontend-technology-stack.md) - Frontend technology stack selection
 3. [003-threaded-search-results.md](003-threaded-search-results.md) - Implementation of threaded search results
 4. [004-search-caching-strategy.md](004-search-caching-strategy.md) - Search caching implementation strategy
+5. [005-ui-improvements.md](005-ui-improvements.md) - UI/UX Improvements for Search Results and Conversational Flow
 
 ## Template
 New ADRs should follow this template:

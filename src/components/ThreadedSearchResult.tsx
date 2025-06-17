@@ -37,9 +37,47 @@ const ThreadedSearchResult: React.FC<ThreadedSearchResultProps> = ({
     }
   };
 
-  const formatContent = (content: string) => {
+  const formatContent = (content: string, sources?: string) => {
+    // Parse sources to create a map of citation numbers to URLs
+    const citationMap: { [key: string]: string } = {};
+    if (sources) {
+      const lines = sources.split('\n');
+      lines.forEach(line => {
+        const match = line.match(/^\[(\d+)\]\s*(?:\[.*?\]\((.*?)\)|.*)/);
+        if (match) {
+          const citationNumber = match[1];
+          const url = match[2] || '#'; // Default to '#' if no URL is found
+          citationMap[citationNumber] = url;
+        }
+      });
+    }
     return (
-      <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose max-w-none">
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }: { href: string; children: React.ReactNode }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              {children}
+            </a>
+          ),
+          ul: ({ children }: { children: React.ReactNode }) => (
+            <ul className="list-disc pl-5 space-y-1">{children}</ul>
+          ),
+          ol: ({ children }: { children: React.ReactNode }) => (
+            <ol className="list-decimal pl-5 space-y-1">{children}</ol>
+          ),
+          li: ({ children }: { children: React.ReactNode }) => (
+            <li className="ml-2">{children}</li>
+          ),
+          text: ({ value }: { value: string }) => {
+            // Replace citation numbers with superscript hyperlinks
+            return value.replace(/\[(\d+)\]/g, (match, number) => {
+              const url = citationMap[number] || '#';
+              return `<sup><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${number}]</a></sup>`;
+            });
+          }
+        }}
+      >
         {content}
       </ReactMarkdown>
     );
@@ -77,16 +115,16 @@ const ThreadedSearchResult: React.FC<ThreadedSearchResultProps> = ({
           </div>
         </CardHeader>
         <CardContent>
-          {formatContent(result.content)}
+          {formatContent(result.content, result.sources)}
           <form onSubmit={handleFollowUp} className="mt-4 flex gap-2">
             <Input
               value={followUpQuery}
               onChange={(e) => setFollowUpQuery(e.target.value)}
               placeholder="Ask a follow-up question..."
-              disabled={isLoading}
+              disabled={isLoading || result.isReplying}
             />
-            <Button type="submit" disabled={isLoading || !followUpQuery.trim()}>
-              {isLoading ? <Loader2 className="animate-spin" /> : 'Ask'}
+            <Button type="submit" disabled={isLoading || result.isReplying || !followUpQuery.trim()}>
+              {isLoading || result.isReplying ? <Loader2 className="animate-spin mr-2" /> : 'Ask'}
             </Button>
           </form>
         </CardContent>

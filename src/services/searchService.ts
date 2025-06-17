@@ -3,7 +3,7 @@ import {
   getSearchResult,
   getConversationThread 
 } from './cacheService';
-import type { SearchResult } from '../components/SearchResults';
+import type { SearchResult } from '../components/SearchEngine';
 
 interface SearchResponse {
   results: SearchResult[];
@@ -74,8 +74,9 @@ export const searchWithDeepSeek = async (
       : query;
 
     console.log('[DEBUG] Calling Supabase edge function with query:', finalQuery);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_EDGE_FUNCTION_URL || 'https://wknkboycyrjignymnjyb.supabase.co/functions/v1/434cb707-7bd8-42f3-884d-5a6b180f8167';
     const response = await fetch(
-      'https://wknkboycyrjignymnjyb.supabase.co/functions/v1/434cb707-7bd8-42f3-884d-5a6b180f8167',
+      supabaseUrl,
       {
         method: 'POST',
         headers: {
