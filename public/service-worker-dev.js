@@ -2506,13 +2506,13 @@
   }
 
   // src/utils/timestampUtils.ts
-  function toMillis(input) {
+  function toMillis(input, defaultValue = 0) {
     if (typeof input === "number") return input;
     if (typeof input === "string") {
       const parsed = Date.parse(input);
-      return isNaN(parsed) ? 0 : parsed;
+      return isNaN(parsed) ? defaultValue : parsed;
     }
-    return 0;
+    return defaultValue;
   }
 
   // src/service-worker.ts
@@ -2579,8 +2579,8 @@
       const filteredData = [];
       for (const entry of cacheData) {
         if (!entry.value) continue;
-        const entryTimestamp = entry.timestamp ? toMillis(entry.timestamp) : entry.value.timestamp ? toMillis(entry.value.timestamp) : 0;
-        const lastTs = toMillis(lastSyncTimestamp);
+        const entryTimestamp = entry.timestamp ? toMillis(entry.timestamp, 0) : entry.value.timestamp ? toMillis(entry.value.timestamp, 0) : 0;
+        const lastTs = toMillis(lastSyncTimestamp, 0);
         console.log("Service Worker: Filter - Entry Timestamp:", entryTimestamp, "Last Sync Timestamp:", lastTs);
         if (entryTimestamp > lastTs) {
           filteredData.push(entry);
@@ -2638,32 +2638,46 @@
   async function requestCacheDataFromMainThread() {
     console.log("Service Worker: Requesting cached data from main thread...");
     return new Promise((resolve, reject) => {
-      const messageChannel = new MessageChannel();
-      console.log("Service Worker: MessageChannel created for cache data request");
-      messageChannel.port1.onmessage = (event) => {
-        console.log("Service Worker: Message received on port1 from main thread");
-        if (event.data && event.data.cacheEntries) {
-          console.log("Service Worker: Cache data received from main thread:", event.data.cacheEntries.length, "entries");
-          resolve(event.data.cacheEntries);
-        } else if (event.data && event.data.error) {
-          console.error("Service Worker: Main thread reported error:", event.data.error);
-          reject(new Error(event.data.error));
-        } else {
-          console.error("Service Worker: Invalid response format from main thread");
-          reject(new Error("Invalid response format from main thread"));
+      let resolved = false;
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          console.error("Service Worker: Timeout reached while waiting for cache data from main thread");
+          reject(new Error("Timeout waiting for cache data from main thread"));
         }
-      };
-      messageChannel.port1.onerror = (error) => {
-        console.error("Service Worker: Message channel error:", error);
-        reject(error);
-      };
-      console.log("Service Worker: Message handlers set up for port1 (onmessage and onerror)");
-      self.clients.matchAll().then((clients) => {
+      }, 1e4);
+      self.clients.matchAll({ type: "window" }).then((clients) => {
         if (clients && clients.length > 0) {
           console.log("Service Worker: Sending REQUEST_CACHE_DATA to", clients.length, "clients");
           clients.forEach((client) => {
             console.log("Service Worker: Sending request to client:", client.url);
-            console.log("Service Worker: About to postMessage with port2 to client");
+            const messageChannel = new MessageChannel();
+            console.log("Service Worker: MessageChannel created for cache data request to client:", client.url);
+            messageChannel.port1.onmessage = (event) => {
+              console.log("Service Worker: Message received on port1 from client:", client.url);
+              if (event.data && event.data.cacheEntries) {
+                console.log("Service Worker: Cache data received from client:", event.data.cacheEntries.length, "entries");
+                clearTimeout(timeoutId);
+                resolved = true;
+                resolve(event.data.cacheEntries);
+              } else if (event.data && event.data.error) {
+                console.error("Service Worker: Client reported error:", event.data.error);
+                if (!resolved) {
+                  reject(new Error(event.data.error));
+                }
+              } else {
+                console.error("Service Worker: Invalid response format from client");
+                if (!resolved) {
+                  reject(new Error("Invalid response format from client"));
+                }
+              }
+            };
+            messageChannel.port1.onerror = (error) => {
+              console.error("Service Worker: Message channel error for client:", client.url, error);
+              if (!resolved) {
+                reject(error);
+              }
+            };
+            console.log("Service Worker: About to postMessage with port2 to client:", client.url);
             client.postMessage({ type: "REQUEST_CACHE_DATA" }, [messageChannel.port2]);
           });
         } else {
@@ -2674,10 +2688,6 @@
         console.error("Service Worker: Error matching clients:", error);
         reject(error);
       });
-      setTimeout(() => {
-        console.error("Service Worker: Timeout reached while waiting for cache data from main thread");
-        reject(new Error("Timeout waiting for cache data from main thread"));
-      }, 1e4);
     });
   }
   var DB_NAME2 = "SearchGPT";

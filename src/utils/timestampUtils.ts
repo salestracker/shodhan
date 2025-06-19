@@ -2,15 +2,16 @@
  * Converts a timestamp input (string, number, or undefined) to milliseconds since epoch.
  * Returns 0 for invalid or undefined inputs.
  * @param input The timestamp input to convert.
- * @returns The timestamp in milliseconds since epoch, or 0 if invalid.
+ * @param defaultValue The default value to return if input is invalid or undefined.
+ * @returns The timestamp in milliseconds since epoch, or the default value if invalid.
  */
-export function toMillis(input: string | number | undefined): number {
+export function toMillis(input: string | number | undefined, defaultValue: number = 0): number {
   if (typeof input === 'number') return input;
   if (typeof input === 'string') {
     const parsed = Date.parse(input);
-    return isNaN(parsed) ? 0 : parsed;
+    return isNaN(parsed) ? defaultValue : parsed;
   }
-  return 0;
+  return defaultValue;
 }
 
 /**

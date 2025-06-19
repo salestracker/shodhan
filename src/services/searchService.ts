@@ -131,7 +131,7 @@ export const searchWithDeepSeek = async (
     // Save the search result to local storage cache
     await saveSearchResult(processedResults[0]);
     
-    // Optionally notify Service Worker for immediate sync (but do not rely on it for caching)
+    // Notify Service Worker for immediate sync
     await sendSearchResultsToServiceWorker(processedResults)
       .then(() => {
         console.log('[DEBUG] Successfully notified Service Worker of new search results for synchronization');
