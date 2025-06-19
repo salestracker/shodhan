@@ -3,6 +3,14 @@ import {
   getSearchResult,
   getConversationThread 
 } from './cacheService';
+import { sendSearchResultsToServiceWorker } from '../utils/serviceWorkerMessenger';
+
+// Diagnostic: initial Service Worker controller state on module load
+if ('serviceWorker' in navigator) {
+  console.log('Diagnostic: initial SW controller on module load:', navigator.serviceWorker.controller);
+} else {
+  console.log('Diagnostic: serviceWorker unsupported in this environment');
+}
 import type { SearchResult } from '../components/SearchEngine';
 
 interface SearchResponse {
@@ -120,8 +128,17 @@ export const searchWithDeepSeek = async (
       return finalResult;
     }) || [];
 
-    // Save all results after processing
-    await Promise.all(processedResults.map(result => saveSearchResult(result)));
+    // Save the search result to local storage cache
+    await saveSearchResult(processedResults[0]);
+    
+    // Optionally notify Service Worker for immediate sync (but do not rely on it for caching)
+    await sendSearchResultsToServiceWorker(processedResults)
+      .then(() => {
+        console.log('[DEBUG] Successfully notified Service Worker of new search results for synchronization');
+      })
+      .catch(error => {
+        console.warn('[DEBUG] Failed to notify Service Worker of new search results:', error);
+      });
     return processedResults;
   } catch (error) {
     console.error('Search service error:', error);
@@ -134,7 +151,7 @@ export const searchWithDeepSeek = async (
           : 'I\'m unable to find reliable information at this time. Please try again later or refine your search query.',
         confidence: 0,
         category: 'Error',
-        timestamp: 'just now',
+        timestamp: Date.now(),
         sources: ''
       }
     ];

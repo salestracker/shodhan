@@ -12,7 +12,7 @@ export type SearchResult = {
   content: string;
   confidence: number;
   category: string;
-  timestamp: string;
+  timestamp: string | number;
   sources?: string;
   parentId?: string;
   followUpQuery?: string;

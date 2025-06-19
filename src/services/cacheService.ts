@@ -1,11 +1,11 @@
 import { sha256 } from 'crypto-hash';
-import type { SearchResult } from '../components/SearchResults';
+import type { SearchResult } from '../components/SearchEngine';
 import type { SearchHistoryItem } from '../types/search';
 
 interface CacheEntry {
   value: SearchResult;
   expires: number;
-  timestamp: number;
+  timestamp: string | number;
 }
 
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
@@ -15,12 +15,14 @@ const HISTORY_KEY = 'search-history';
 // Store individual results by their ID and maintain thread structure
 export const saveSearchResult = async (result: SearchResult): Promise<void> => {
   try {
+    console.log('CacheService: Saving search result to cache:', result.id);
     const entry: CacheEntry = {
       value: result,
       expires: Date.now() + CACHE_TTL,
       timestamp: Date.now()
     };
     
+    console.log('CacheService: Created cache entry with timestamp:', new Date(entry.timestamp).toISOString());
     // Save the main result
     localStorage.setItem(`${CONVERSATION_PREFIX}${result.id}`, JSON.stringify(entry));
 
@@ -56,14 +58,22 @@ export const saveSearchResult = async (result: SearchResult): Promise<void> => {
 // Get individual result by ID
 export const getSearchResult = async (id: string): Promise<SearchResult | null> => {
   try {
+    console.log('CacheService: Getting search result from cache:', id);
     const cached = localStorage.getItem(`${CONVERSATION_PREFIX}${id}`);
-    if (!cached) return null;
+    if (!cached) {
+      console.log('CacheService: No cached entry found for ID:', id);
+      return null;
+    }
 
     const entry: CacheEntry = JSON.parse(cached);
+    console.log('CacheService: Found cached entry with timestamp:', new Date(entry.timestamp).toISOString());
+    
     if (Date.now() > entry.expires) {
+      console.log('CacheService: Cached entry expired, removing from cache');
       localStorage.removeItem(`${CONVERSATION_PREFIX}${id}`);
       return null;
     }
+    console.log('CacheService: Returning cached result');
     return entry.value;
   } catch (error) {
     console.error('Cache read error:', error);
@@ -72,6 +82,33 @@ export const getSearchResult = async (id: string): Promise<SearchResult | null> 
 };
 
 // Get all results in a conversation thread
+/**
+ * Retrieves all search results from the cache.
+ * @returns Promise that resolves to an array of all cached search results.
+ */
+export const getAllSearchResults = async (): Promise<SearchResult[]> => {
+  try {
+    const results: SearchResult[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('conv_')) {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          const entry = JSON.parse(cached);
+          if (entry.value && Date.now() <= entry.expires) {
+            results.push(entry.value);
+          }
+        }
+      }
+    }
+    console.log('CacheService: Retrieved all search results from cache:', results.length, 'entries');
+    return results;
+  } catch (error) {
+    console.error('CacheService: Error retrieving all search results from cache:', error);
+    return [];
+  }
+};
+
 export const getConversationThread = async (rootId: string): Promise<SearchResult | null> => {
   try {
     const rootResult = await getSearchResult(rootId);
@@ -158,6 +195,38 @@ export const clearSearchHistory = async (): Promise<void> => {
     localStorage.removeItem(HISTORY_KEY);
   } catch (error) {
     console.error('History clear error:', error);
+  }
+};
+
+interface CacheEntryForSync {
+  value: SearchResult;
+  expires: number;
+  timestamp: string | number;
+}
+
+export const getAllCacheEntries = async (): Promise<CacheEntryForSync[]> => {
+  try {
+    console.log('CacheService: Getting all cache entries for sync');
+    const entries: CacheEntryForSync[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('conv_')) {
+        try {
+          const item = JSON.parse(localStorage.getItem(key) || '{}') as CacheEntryForSync;
+          if (item.value && item.timestamp) {
+            console.log('CacheService: Found valid cache entry:', key, 'with timestamp:', new Date(item.timestamp).toISOString());
+            entries.push(item);
+          }
+        } catch (e) {
+          console.error('Error parsing cache entry from localStorage:', e);
+        }
+      }
+    }
+    console.log('CacheService: Total valid cache entries found:', entries.length);
+    return entries;
+  } catch (error) {
+    console.error('Cache read error:', error);
+    return [];
   }
 };
 
