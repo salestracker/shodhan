@@ -152,9 +152,9 @@ These variables have been integrated into the codebase to replace hardcoded valu
 
 ## Roadmap
 - [ ] User authentication
-- [ ] Search history
+- [x] Search history
 - [ ] Multi-LLM support
-- [ ] Advanced caching strategies
+- [x] Advanced caching strategies
 
 ## Contributing
 
