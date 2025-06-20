@@ -2507,7 +2507,7 @@
 
   // src/utils/logger.ts
   var import_meta = {};
-  var isDevelopment = import_meta.env.DEV === 1;
+  var isDevelopment = import_meta.env.DEV;
   var logger2 = {
     log: (...args) => {
       if (isDevelopment) console.log(...args);
