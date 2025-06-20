@@ -71,9 +71,10 @@ An ai powered search GPT for searching and displaying results with caching and s
 ## Setup and Development
 
 1. Clone the repository.
-2. Ensure you have a `.env.local` file at the project root with the necessary environment variables.
-3. Run `npm install` to install dependencies.
-4. Use `npm run dev` for development mode or `npm run build` followed by `npm run serve` for production testing.
+2. Use **Node.js 20.x** (LTS). A `.nvmrc` file is included for use with [nvm](https://github.com/nvm-sh/nvm).
+3. Ensure you have a `.env.local` file at the project root with the necessary environment variables.
+4. Run `npm install` to install dependencies.
+5. Use `npm run dev` for development mode or `npm run build` followed by `npm run serve` for production testing.
 
 ### Development Commands
 ```bash
@@ -93,6 +94,7 @@ npm run build
 - A cloud account such as digitalocean, aws, gcp to deploy to. How to setup for deployment is out of scope of this project but an instance is provided in the [steps](#steps) section below.
 - Supabase project with Edge Functions configured. How to setup this up is out of scope of this project.
 - An LLM API key. How to setup this up is out of scope of this project.
+- Node.js **20.x** runtime on your deployment target.
 
 ### Steps
 1. **Create New Web Service**:

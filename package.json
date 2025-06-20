@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
     "scripts": {
       "dev": "npm run build-sw && vite",
       "build": "npm run build-sw && vite build",
