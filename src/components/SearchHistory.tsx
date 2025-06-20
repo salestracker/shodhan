@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { History } from 'lucide-react';
 
 interface SearchHistoryProps {
-  onSelect: (query: string, resultId?: string) => void; // Modified to accept resultId
+  onSelect: (id: string, query: string) => void;
 }
 
 const SearchHistory: React.FC<SearchHistoryProps> = ({ onSelect }) => {
