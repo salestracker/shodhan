@@ -7,6 +7,9 @@ esbuild.build({
   bundle: true,
   platform: 'browser',
   outfile: 'public/service-worker-dev.js',
+  define: {
+    'import.meta.env.DEV': process.env.NODE_ENV === 'development' ? 'true' : 'false'
+  }
 }).then(() => {
   console.log('Service Worker built successfully to public/service-worker-dev.js');
 }).catch((error) => {
