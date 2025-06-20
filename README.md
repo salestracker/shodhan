@@ -84,10 +84,10 @@ npm run dev
 npm run build
 ```
 
-## Deployment to Render.com
+## Deployment
 
 ### Prerequisites
-- A cloud account such as digitalocean, aws, gcp to deploy to. How to setup for deployment is out of scope of this project but an instance is provided in the [Steps](###steps) section below.
+- A cloud account such as digitalocean, aws, gcp to deploy to. How to setup for deployment is out of scope of this project but an instance is provided in the [steps](#steps) section below.
 - Supabase project with Edge Functions configured. How to setup this up is out of scope of this project.
 - An LLM API key. How to setup this up is out of scope of this project.
 
