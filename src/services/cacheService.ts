@@ -1,4 +1,3 @@
-import { sha256 } from 'crypto-hash';
 import type { SearchResult, SearchHistoryItem } from '../types/search';
 
 interface CacheEntry {
