@@ -1,4 +1,3 @@
-import { sha256 } from 'crypto-hash';
 import type { SearchResult } from '../components/SearchEngine';
 import type { SearchHistoryItem } from '../types/search';
 
