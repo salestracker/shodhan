@@ -10,7 +10,7 @@ The cache sync system addresses the need for instant, privacy-preserving search 
 
 ## Architecture
 
-The implementation uses a combination of a custom Service Worker, Workbox for background sync, and fallback mechanisms to ensure compatibility across different browsers. Below is the architectural flow:
+The implementation uses a hybrid model combining a custom Service Worker with Workbox for background sync, employing both "push" and "pull" mechanisms to ensure compatibility and optimal performance across different browsers. Below is the architectural flow:
 
 ```mermaid
 graph TD
@@ -31,8 +31,9 @@ graph TD
 
   App -- Store_Update_Cache --> CacheService
   App -- Register_SW_Pass_Config_Debug_Mode --> SW_Reg
-  SW_Reg -- Trigger_Sync_Periodic_Foreground_One_off --> SW
-  SW -- On_Sync_Event_Request_Cached_Data --> App
+  App -- Push_Model_Trigger_Immediate_Sync --> SW
+  SW_Reg -- Pull_Model_Trigger_Background_Sync --> SW
+  SW -- Request_Cached_Data --> App
   App -- Send_Cached_Data_CacheEntryForSync --> SW
   SW -- Filter_Queue_Data_via_Workbox_BS --> Workbox_BS
   Workbox_BS -- Send_Batched_Data_retries_on_failure --> Cache_Orchestrator
@@ -42,30 +43,35 @@ graph TD
 
 1. **React Application (`src/main.tsx`)**:
    - Registers the Service Worker and passes configuration (webhook URL, debug mode).
-   - Implements fallback sync mechanisms for browsers without Periodic Background Sync support.
+   - Registers background sync with the tag 'sync-cache' for the "pull" model on supported browsers (e.g., Chrome).
    - Communicates with the Service Worker to provide cached data on request, using `getAllCacheEntries()` to send complete `CacheEntryForSync` objects with timestamps.
 
 2. **Cache Service (`src/services/cacheService.ts`)**:
    - Manages local storage of search results with timestamps.
    - Provides a method (`getAllCacheEntries`) to retrieve all cached entries for sync purposes, ensuring the Service Worker has access to data with the necessary timestamp information.
 
-3. **Service Worker (`src/service-worker.ts` and `public/service-worker-dev.js`)**:
+3. **Search Service (`src/services/searchService.ts`)**:
+   - Implements the "push" model by notifying the Service Worker of new search results immediately after they are saved to the cache, ensuring real-time synchronization across all browsers.
+
+4. **Service Worker (`src/service-worker.ts` and `public/service-worker-dev.js`)**:
    - Custom logic to filter cache data based on the last sync timestamp using a manual `for...of` loop to avoid issues with `Array.prototype.filter` in the Service Worker context.
    - Uses Workbox's `BackgroundSyncPlugin` to queue and retry failed sync requests to the webhook.
-   - Handles messages from the main thread for configuration, foreground sync triggers, and new cache entry notifications.
+   - Handles messages from the main thread for configuration and new cache entry notifications (`CACHE_NEW_ENTRY`) for the "push" model, and listens for background sync events for the "pull" model.
 
-4. **Workbox Integration (`vite.config.ts`)**:
+5. **Workbox Integration (`vite.config.ts`)**:
    - Configured via `vite-plugin-pwa` to generate a Workbox-powered Service Worker using the `generateSW` strategy.
    - Defines runtime caching rules and background sync capabilities for robust data synchronization.
 
 ## Implementation Details
 
-### Service Worker Registration and Fallbacks (`src/main.tsx`)
+### Service Worker Registration and Background Sync (`src/main.tsx`)
 
-- **Periodic Background Sync**: Attempts to register a periodic sync if supported by the browser (e.g., Chrome). This allows the Service Worker to sync data even when the app is in the background.
-- **Foreground Sync Fallback**: For browsers without periodic sync support (e.g., Safari), a `setInterval` triggers sync at a frequency defined by the `VITE_CACHE_SYNC_INTERVAL` environment variable (defaulting to 5 minutes if not set) when the app is visible, using the Page Visibility API to pause sync when the tab is hidden. Console logs display the sync interval and confirm when sync events are triggered.
-- **One-off Background Sync Fallback**: Registers a one-off sync event for connectivity changes, ensuring data syncs when the user comes back online.
+- **Background Sync Registration (Pull Model)**: Registers a background sync with the tag 'sync-cache' if supported by the browser (e.g., Chrome). This enables the Service Worker to sync data in the background, particularly useful when connectivity is restored after being offline, acting as a progressive enhancement.
 - **Development Workaround**: In development mode, a static `public/service-worker-dev.js` is used to bypass MIME type issues with `vite-plugin-pwa`'s `dev-sw.js` virtual module, with `devOptions.enabled` set to `false` in `vite.config.ts` to prevent conflicts.
+
+### Immediate Sync Trigger (`src/services/searchService.ts`)
+
+- **Push Model**: After a new search result is saved to the cache, the `sendSearchResultsToServiceWorker()` function is called to notify the Service Worker via a `CACHE_NEW_ENTRY` message. This ensures immediate synchronization when the app is in use, working across all browsers including those without background sync support (e.g., Safari).
 
 ### Cache Data Handling (`src/services/cacheService.ts`)
 

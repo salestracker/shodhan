@@ -12,6 +12,10 @@ An ADR is a document that captures an important architectural decision along wit
 3. [003-threaded-search-results.md](003-threaded-search-results.md) - Implementation of threaded search results
 4. [004-search-caching-strategy.md](004-search-caching-strategy.md) - Search caching implementation strategy
 5. [005-ui-improvements.md](005-ui-improvements.md) - UI/UX Improvements for Search Results and Conversational Flow
+6. [006-service-worker-development-environment-strategy.md](006-service-worker-development-environment-strategy.md) - Service Worker development environment strategy
+7. [007-service-worker-data-filtering-refinement.md](007-service-worker-data-filtering-refinement.md) - Service Worker data filtering refinement
+8. [008-main-thread-service-worker-cache-data-communication.md](008-main-thread-service-worker-cache-data-communication.md) - Main thread-Service Worker cache data communication
+9. [009-hybrid-cache-sync-model.md](009-hybrid-cache-sync-model.md) - Hybrid cache synchronization model
 
 ## Template
 New ADRs should follow this template:

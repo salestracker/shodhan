@@ -152,19 +152,21 @@ This document logs, analyzes, and describes the series of issues encountered whi
 ## Current Status and Recommendations
 
 ### Current Status
-As of the latest actions, the cache synchronization mechanism is fully operational. The key issues have been resolved:
+As of the latest actions, the cache synchronization mechanism is fully operational with a hybrid "push" and "pull" model. The key issues have been resolved:
 - The Service Worker filtering logic now correctly identifies new entries using a manual `for...of` loop.
 - The main thread sends the appropriate `CacheEntryForSync` objects to the Service Worker using `getAllCacheEntries()`.
 - The webhook sync failure (HTTP 400) was resolved by activating the Make.com scenario, with subsequent syncs succeeding with a `200 OK` status.
 - The `Timeout reached while waiting for cache data from main thread` warning persists but is benign and does not impact functionality.
 - The MIME type issue for Service Worker registration in development mode remains a challenge, but a static `public/service-worker-dev.js` workaround with `vite-plugin-pwa`'s `devOptions.enabled: false` has been implemented to bypass this problem.
+- The hybrid cache synchronization model has been implemented, combining immediate "push" notifications from `src/services/searchService.ts` and background "pull" sync via Background Sync API registration in `src/main.tsx`, ensuring robust sync across different browser environments.
 
 ### Recommendations for Future Steps
 1.  **Monitor Service Worker Registration**: Continue to use the static `public/service-worker-dev.js` for development and monitor for any further MIME type issues. If necessary, explore additional Vite or `vite-plugin-pwa` configuration options to fully resolve this in the future.
 2.  **Optimize Timeout Handling**: Consider adjusting the timeout duration or mechanism in `src/service-worker.ts` and `public/service-worker-dev.js` to eliminate the benign timeout warning for cleaner logs.
 3.  **Enhance Data Validation**: Add additional checks or logging in the Service Worker to validate the structure of received cache data, preventing potential future mismatches.
 4.  **Document External Dependencies**: Ensure documentation includes steps to verify external webhook configurations (like Make.com scenarios) as part of the setup process for cache synchronization.
-5.  **Proceed with Further Testing**: Continue with subsequent steps in the test plan, such as verifying long-term sync behavior and retry mechanisms under varying network conditions, now that the core sync functionality is operational.
+5.  **Proceed with Further Testing**: Continue with subsequent steps in the test plan, such as verifying long-term sync behavior and retry mechanisms under varying network conditions, now that the hybrid sync model is fully operational.
+6.  **Evaluate Hybrid Model Performance**: Monitor the performance and potential redundancy of the hybrid "push" and "pull" sync model in different browser environments to ensure optimal user experience and resource usage.
 
 ## Conclusion
 

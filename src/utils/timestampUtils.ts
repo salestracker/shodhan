@@ -5,7 +5,7 @@
  * @param defaultValue The default value to return if input is invalid or undefined.
  * @returns The timestamp in milliseconds since epoch, or the default value if invalid.
  */
-export function toMillis(input: string | number | undefined, defaultValue: number = 0): number {
+export function toMillis(input: string | number | undefined, defaultValue: number): number {
   if (typeof input === 'number') return input;
   if (typeof input === 'string') {
     const parsed = Date.parse(input);
