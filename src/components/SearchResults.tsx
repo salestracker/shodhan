@@ -4,6 +4,7 @@ import './SearchResults.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { logger } from '../utils/logger';
 import ThreadedSearchResult from './ThreadedSearchResult';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -18,7 +19,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ result, isLoading, onFoll
   const [followUpQuery, setFollowUpQuery] = useState<string>('');
   
   useEffect(() => {
-    console.log("SearchResults rendered with result:", result);
+    logger.log("SearchResults rendered with result:", result);
   }, [result]);
 
   // Parse sources to create a map of citation numbers to URLs
@@ -41,11 +42,11 @@ const SearchResults: React.FC<SearchResultsProps> = ({ result, isLoading, onFoll
   const handleFollowUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (followUpQuery.trim() && onFollowUp && result) {
-      console.log("Submitting follow-up query for result ID:", result.id, "Query:", followUpQuery);
+      logger.log("Submitting follow-up query for result ID:", result.id, "Query:", followUpQuery);
       await onFollowUp(result.id, followUpQuery);
       setFollowUpQuery('');
     } else {
-      console.log("Follow-up submission blocked. onFollowUp:", !!onFollowUp, "result:", !!result, "query:", followUpQuery);
+      logger.log("Follow-up submission blocked. onFollowUp:", !!onFollowUp, "result:", !!result, "query:", followUpQuery);
     }
   };
 

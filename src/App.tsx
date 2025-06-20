@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useEffect } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { logger } from "./utils/logger";
 
 const queryClient = new QueryClient();
 
@@ -18,9 +19,9 @@ const App = () => {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       const handleMessage = (event: MessageEvent) => {
-        console.log('App.tsx: Received message from Service Worker:', event.data);
+        logger.log('App.tsx: Received message from Service Worker:', event.data);
         if (event.data && event.data.type === 'SYNC_SUCCESS_NOTIFICATION') {
-          console.log('App.tsx: Showing toast for successful sync');
+          logger.log('App.tsx: Showing toast for successful sync');
           toast({
             title: "Sync Successful",
             description: "Synchronizing your search for better results",
@@ -30,11 +31,11 @@ const App = () => {
       };
 
       navigator.serviceWorker.addEventListener('message', handleMessage);
-      console.log('App.tsx: Added message listener for Service Worker messages');
+      logger.log('App.tsx: Added message listener for Service Worker messages');
 
       return () => {
         navigator.serviceWorker.removeEventListener('message', handleMessage);
-        console.log('App.tsx: Removed message listener for Service Worker messages');
+        logger.log('App.tsx: Removed message listener for Service Worker messages');
       };
     }
   }, [toast]);
