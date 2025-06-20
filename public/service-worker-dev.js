@@ -2508,6 +2508,8 @@
   // src/utils/logger.ts
   import { logger } from 'src/utils/logger.ts';
 
+  const logger2 = logger;
+  
   // src/utils/timestampUtils.ts
   function toMillis(input, defaultValue = 0) {
     if (typeof input === "number") return input;
