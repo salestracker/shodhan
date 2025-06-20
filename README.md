@@ -108,7 +108,7 @@ npm run build
 3. **Set Environment Variables**:
    ```
    VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-anon-key
+   VITE_SUPABASE_KEY=your-supabase-key
    VITE_SUPABASE_EDGE_FUNCTION_URL=The URL for Supabase edge functions used in search operations.
    VITE_CACHE_SYNC_INTERVAL=The interval (in milliseconds) for cache synchronization.
    VITE_CACHE_WEBHOOK_URL=The webhook URL for cache data synchronization.
