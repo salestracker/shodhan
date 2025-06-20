@@ -2505,6 +2505,21 @@
     cacheNames.updateDetails(details);
   }
 
+  // src/utils/logger.ts
+  var import_meta = {};
+  var isDevelopment = import_meta.env.DEV === 1;
+  var logger2 = {
+    log: (...args) => {
+      if (isDevelopment) console.log(...args);
+    },
+    warn: (...args) => {
+      if (isDevelopment) console.warn(...args);
+    },
+    error: (...args) => {
+      if (isDevelopment) console.error(...args);
+    }
+  };
+
   // src/utils/timestampUtils.ts
   function toMillis(input, defaultValue = 0) {
     if (typeof input === "number") return input;
@@ -2517,175 +2532,175 @@
 
   // src/service-worker.ts
   var manifest = self.__WB_MANIFEST;
-  console.log("Service Worker: Workbox manifest placeholder initialized", manifest);
+  logger2.log("Service Worker: Workbox manifest placeholder initialized", manifest);
   setCacheNameDetails({
     prefix: "search-gpt",
     suffix: "v1",
     precache: "precache",
     runtime: "runtime-cache"
   });
-  console.log("Service Worker: Initialized with debug mode:", self.location.hostname === "localhost" ? "ON (localhost detected)" : "OFF");
+  logger2.log("Service Worker: Initialized with debug mode:", self.location.hostname === "localhost" ? "ON (localhost detected)" : "OFF");
   var webhookUrl = "";
   var debugMode = self.location.hostname === "localhost";
-  console.log("Service Worker: Setting up message listener for main thread communication");
+  logger2.log("Service Worker: Setting up message listener for main thread communication");
   self.addEventListener("message", (event) => {
-    console.log("Service Worker: Raw message event received:", event);
-    console.log("Service Worker: Raw message data:", event.data);
-    console.log("*** SERVICE WORKER: MESSAGE RECEIVED ***", event.data);
+    logger2.log("Service Worker: Raw message event received:", event);
+    logger2.log("Service Worker: Raw message data:", event.data);
+    logger2.log("*** SERVICE WORKER: MESSAGE RECEIVED ***", event.data);
     const data = event.data;
     if (data) {
       if (data.type === "SET_CONFIG" && data.webhookUrl) {
         webhookUrl = data.webhookUrl;
         if (data.useMock === false) {
-          console.log("Service Worker: Using actual webhook URL (mock disabled):", webhookUrl);
+          logger2.log("Service Worker: Using actual webhook URL (mock disabled):", webhookUrl);
         } else {
-          console.log("Service Worker: Webhook URL set:", webhookUrl);
+          logger2.log("Service Worker: Webhook URL set:", webhookUrl);
         }
       }
       if (data.type === "SET_DEBUG_MODE") {
         debugMode = data.debugMode || false;
-        console.log("Service Worker: Debug mode set to:", debugMode);
+        logger2.log("Service Worker: Debug mode set to:", debugMode);
       }
       if (data.type === "TRIGGER_FOREGROUND_SYNC") {
-        console.log("Service Worker: Foreground sync triggered by main thread. Initiating sync process.");
+        logger2.log("Service Worker: Foreground sync triggered by main thread. Initiating sync process.");
         event.waitUntil(syncCacheData());
-        console.log("Service Worker: syncCacheData() called and event.waitUntil() set.");
+        logger2.log("Service Worker: syncCacheData() called and event.waitUntil() set.");
       }
       if (data.type === "CACHE_NEW_ENTRY" && data.results) {
-        console.log("Service Worker: Received notification of new cache entries from main thread:", data.results.length, "entries");
-        console.log("Service Worker: Triggering sync for new entries (not saving in SW, main thread handles cache).");
+        logger2.log("Service Worker: Received notification of new cache entries from main thread:", data.results.length, "entries");
+        logger2.log("Service Worker: Triggering sync for new entries (not saving in SW, main thread handles cache).");
         event.waitUntil(syncCacheData());
       }
     } else {
-      console.log("Service Worker: Received message with no data or empty data from main thread.");
+      logger2.log("Service Worker: Received message with no data or empty data from main thread.");
     }
   });
   async function syncCacheData() {
-    console.log("Service Worker: syncCacheData() function entered.");
-    console.log("Service Worker: Sync operation timestamp:", (/* @__PURE__ */ new Date()).toISOString());
+    logger2.log("Service Worker: syncCacheData() function entered.");
+    logger2.log("Service Worker: Sync operation timestamp:", (/* @__PURE__ */ new Date()).toISOString());
     if (!webhookUrl) {
-      console.warn("Service Worker: Webhook URL not set. Cannot sync cache.");
+      logger2.warn("Service Worker: Webhook URL not set. Cannot sync cache.");
       return;
     }
-    console.log("Service Worker: Initiating syncCacheData. Webhook URL:", webhookUrl);
+    logger2.log("Service Worker: Initiating syncCacheData. Webhook URL:", webhookUrl);
     try {
-      console.log("Service Worker: Beginning request for cached data from main thread...");
+      logger2.log("Service Worker: Beginning request for cached data from main thread...");
       const cacheData = await requestCacheDataFromMainThread();
-      console.log("Service Worker: Successfully received cache data from main thread:", cacheData.length, "entries");
-      console.log("Service Worker: Raw cache data for inspection:", JSON.stringify(cacheData, null, 2));
+      logger2.log("Service Worker: Successfully received cache data from main thread:", cacheData.length, "entries");
+      logger2.log("Service Worker: Raw cache data for inspection:", JSON.stringify(cacheData, null, 2));
       const lastSyncTimestamp = await getLastSyncTimestamp();
-      console.log("Service Worker: Last sync timestamp:", new Date(lastSyncTimestamp).toISOString());
-      console.log("Service Worker: Cache data length before filtering:", cacheData.length);
+      logger2.log("Service Worker: Last sync timestamp:", new Date(lastSyncTimestamp).toISOString());
+      logger2.log("Service Worker: Cache data length before filtering:", cacheData.length);
       const filteredData = [];
       for (const entry of cacheData) {
         if (!entry.value) continue;
         const entryTimestamp = entry.timestamp ? toMillis(entry.timestamp, 0) : entry.value.timestamp ? toMillis(entry.value.timestamp, 0) : 0;
         const lastTs = toMillis(lastSyncTimestamp, 0);
-        console.log("Service Worker: Filter - Entry Timestamp:", entryTimestamp, "Last Sync Timestamp:", lastTs);
+        logger2.log("Service Worker: Filter - Entry Timestamp:", entryTimestamp, "Last Sync Timestamp:", lastTs);
         if (entryTimestamp > lastTs) {
           filteredData.push(entry);
         }
       }
-      console.log("Service Worker: Filtered data length after manual filtering:", filteredData.length);
-      console.log("Service Worker: Filtered data for sync (entries newer than last sync):", filteredData);
+      logger2.log("Service Worker: Filtered data length after manual filtering:", filteredData.length);
+      logger2.log("Service Worker: Filtered data for sync (entries newer than last sync):", filteredData);
       if (filteredData.length > 0) {
-        console.log("Service Worker: Sync triggered. Sending filtered cache data to webhook:", webhookUrl);
-        console.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
-        console.log("Service Worker: Sync packet being sent:", JSON.stringify(filteredData, null, 2));
+        logger2.log("Service Worker: Sync triggered. Sending filtered cache data to webhook:", webhookUrl);
+        logger2.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
+        logger2.log("Service Worker: Sync packet being sent:", JSON.stringify(filteredData, null, 2));
         try {
-          console.log("Service Worker: Initiating fetch request to webhook...");
+          logger2.log("Service Worker: Initiating fetch request to webhook...");
           const response = await fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(filteredData)
           });
-          console.log("Service Worker: Fetch request to webhook completed with status:", response.status);
+          logger2.log("Service Worker: Fetch request to webhook completed with status:", response.status);
           const responseText = await response.text();
-          console.log("Service Worker: Webhook response body:", responseText || "(empty response)");
+          logger2.log("Service Worker: Webhook response body:", responseText || "(empty response)");
           if (response.ok) {
-            console.log("Service Worker: Cache data synced successfully.");
+            logger2.log("Service Worker: Cache data synced successfully.");
             await updateLastSyncTimestamp(Date.now());
             self.clients.matchAll({ type: "window" }).then((clients) => {
               clients.forEach((client) => {
-                console.log("Service Worker: Notifying client of successful sync:", client.url);
+                logger2.log("Service Worker: Notifying client of successful sync:", client.url);
                 client.postMessage({ type: "SYNC_SUCCESS_NOTIFICATION" });
               });
             });
           } else {
-            console.error("Service Worker: Failed to sync cache data. Status:", response.status, "Text:", response.statusText);
-            console.error("Service Worker: ERROR - Data was NOT sent to webhook URL:", webhookUrl);
+            logger2.error("Service Worker: Failed to sync cache data. Status:", response.status, "Text:", response.statusText);
+            logger2.error("Service Worker: ERROR - Data was NOT sent to webhook URL:", webhookUrl);
             throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           }
         } catch (error) {
-          console.error("Service Worker: Fetch request to webhook failed:", error);
-          console.log("Service Worker: Request will be queued for background sync retry");
+          logger2.error("Service Worker: Fetch request to webhook failed:", error);
+          logger2.log("Service Worker: Request will be queued for background sync retry");
           throw error;
         }
       } else {
-        console.log("Service Worker: Sync triggered. No new data to sync (all entries are older than last sync or cache is empty).");
+        logger2.log("Service Worker: Sync triggered. No new data to sync (all entries are older than last sync or cache is empty).");
       }
     } catch (error) {
-      console.error("Service Worker: Error during cache sync:", error);
+      logger2.error("Service Worker: Error during cache sync:", error);
     }
-    console.log("Service Worker: syncCacheData() function exited.");
+    logger2.log("Service Worker: syncCacheData() function exited.");
   }
   self.addEventListener("sync", (event) => {
     if (event.tag === "sync-cache" || event.tag === "one-off-sync-cache") {
-      if (debugMode) console.log("Service Worker: Sync event triggered for tag:", event.tag);
+      if (debugMode) logger2.log("Service Worker: Sync event triggered for tag:", event.tag);
       event.waitUntil(syncCacheData());
     }
   });
   async function requestCacheDataFromMainThread() {
-    console.log("Service Worker: Requesting cached data from main thread...");
+    logger2.log("Service Worker: Requesting cached data from main thread...");
     return new Promise((resolve, reject) => {
       let resolved = false;
       const timeoutId = setTimeout(() => {
         if (!resolved) {
-          console.error("Service Worker: Timeout reached while waiting for cache data from main thread");
+          logger2.error("Service Worker: Timeout reached while waiting for cache data from main thread");
           reject(new Error("Timeout waiting for cache data from main thread"));
         }
       }, 1e4);
       self.clients.matchAll({ type: "window" }).then((clients) => {
         if (clients && clients.length > 0) {
-          console.log("Service Worker: Sending REQUEST_CACHE_DATA to", clients.length, "clients");
+          logger2.log("Service Worker: Sending REQUEST_CACHE_DATA to", clients.length, "clients");
           clients.forEach((client) => {
-            console.log("Service Worker: Sending request to client:", client.url);
+            logger2.log("Service Worker: Sending request to client:", client.url);
             const messageChannel = new MessageChannel();
-            console.log("Service Worker: MessageChannel created for cache data request to client:", client.url);
+            logger2.log("Service Worker: MessageChannel created for cache data request to client:", client.url);
             messageChannel.port1.onmessage = (event) => {
-              console.log("Service Worker: Message received on port1 from client:", client.url);
+              logger2.log("Service Worker: Message received on port1 from client:", client.url);
               if (event.data && event.data.cacheEntries) {
-                console.log("Service Worker: Cache data received from client:", event.data.cacheEntries.length, "entries");
+                logger2.log("Service Worker: Cache data received from client:", event.data.cacheEntries.length, "entries");
                 clearTimeout(timeoutId);
                 resolved = true;
                 resolve(event.data.cacheEntries);
               } else if (event.data && event.data.error) {
-                console.error("Service Worker: Client reported error:", event.data.error);
+                logger2.error("Service Worker: Client reported error:", event.data.error);
                 if (!resolved) {
                   reject(new Error(event.data.error));
                 }
               } else {
-                console.error("Service Worker: Invalid response format from client");
+                logger2.error("Service Worker: Invalid response format from client");
                 if (!resolved) {
                   reject(new Error("Invalid response format from client"));
                 }
               }
             };
             messageChannel.port1.onerror = (error) => {
-              console.error("Service Worker: Message channel error for client:", client.url, error);
+              logger2.error("Service Worker: Message channel error for client:", client.url, error);
               if (!resolved) {
                 reject(error);
               }
             };
-            console.log("Service Worker: About to postMessage with port2 to client:", client.url);
+            logger2.log("Service Worker: About to postMessage with port2 to client:", client.url);
             client.postMessage({ type: "REQUEST_CACHE_DATA" }, [messageChannel.port2]);
           });
         } else {
-          console.error("Service Worker: No clients found to request cache data from");
+          logger2.error("Service Worker: No clients found to request cache data from");
           reject(new Error("No clients found to request cache data from"));
         }
       }).catch((error) => {
-        console.error("Service Worker: Error matching clients:", error);
+        logger2.error("Service Worker: Error matching clients:", error);
         reject(error);
       });
     });
@@ -2697,7 +2712,7 @@
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME2, DB_VERSION2);
       request.onerror = (event) => {
-        console.error("Service Worker: Error opening IndexedDB:", event.target.error);
+        logger2.error("Service Worker: Error opening IndexedDB:", event.target.error);
         reject(event.target.error);
       };
       request.onsuccess = (event) => {
@@ -2707,11 +2722,11 @@
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: "key" });
-          console.log("Service Worker: IndexedDB store created:", STORE_NAME);
+          logger2.log("Service Worker: IndexedDB store created:", STORE_NAME);
         }
         if (!db.objectStoreNames.contains("searchResults")) {
           db.createObjectStore("searchResults", { keyPath: "key" });
-          console.log("Service Worker: IndexedDB store created for search results.");
+          logger2.log("Service Worker: IndexedDB store created for search results.");
         }
       };
     });
@@ -2725,16 +2740,16 @@
         const request = store.get("lastSyncTimestamp");
         request.onsuccess = () => {
           const result = request.result ? request.result.value : 0;
-          console.log("Service Worker: Retrieved last sync timestamp from IndexedDB:", new Date(result).toISOString());
+          logger2.log("Service Worker: Retrieved last sync timestamp from IndexedDB:", new Date(result).toISOString());
           resolve(result);
         };
         request.onerror = () => {
-          console.error("Service Worker: Error getting last sync timestamp from IndexedDB:", request.error);
+          logger2.error("Service Worker: Error getting last sync timestamp from IndexedDB:", request.error);
           resolve(0);
         };
       });
     } catch (error) {
-      console.error("Service Worker: Failed to open IndexedDB for getting timestamp:", error);
+      logger2.error("Service Worker: Failed to open IndexedDB for getting timestamp:", error);
       return Promise.resolve(0);
     }
   }
@@ -2746,45 +2761,45 @@
         const store = transaction.objectStore(STORE_NAME);
         const request = store.put({ key: "lastSyncTimestamp", value: timestamp });
         request.onsuccess = () => {
-          console.log("Service Worker: Updated last sync timestamp in IndexedDB to", new Date(timestamp).toISOString());
+          logger2.log("Service Worker: Updated last sync timestamp in IndexedDB to", new Date(timestamp).toISOString());
           resolve();
         };
         request.onerror = () => {
-          console.error("Service Worker: Error updating last sync timestamp in IndexedDB:", request.error);
+          logger2.error("Service Worker: Error updating last sync timestamp in IndexedDB:", request.error);
           resolve();
         };
       });
     } catch (error) {
-      console.error("Service Worker: Failed to open IndexedDB for updating timestamp:", error);
+      logger2.error("Service Worker: Failed to open IndexedDB for updating timestamp:", error);
       return Promise.resolve();
     }
   }
   self.addEventListener("activate", (event) => {
-    console.log("Service Worker: Activate event listener started.");
+    logger2.log("Service Worker: Activate event listener started.");
     self.clients.matchAll({ type: "window" }).then((clients) => {
-      console.log(`Service Worker: Found ${clients.length} client(s) to claim`);
+      logger2.log(`Service Worker: Found ${clients.length} client(s) to claim`);
       clients.forEach((client) => {
-        console.log("Service Worker: Client URL:", client.url);
+        logger2.log("Service Worker: Client URL:", client.url);
       });
     });
     event.waitUntil(self.clients.claim().then(() => {
-      console.log("Service Worker: self.clients.claim() completed. Service Worker now controls all clients.");
+      logger2.log("Service Worker: self.clients.claim() completed. Service Worker now controls all clients.");
       self.clients.matchAll({ type: "window" }).then((clients) => {
         clients.forEach((client) => {
-          console.log("Service Worker: Notifying client of activation:", client.url);
+          logger2.log("Service Worker: Notifying client of activation:", client.url);
           client.postMessage({ type: "SERVICE_WORKER_ACTIVATED" });
         });
       });
     }).catch((error) => {
-      console.error("Service Worker: Error in self.clients.claim():", error);
+      logger2.error("Service Worker: Error in self.clients.claim():", error);
     }));
-    console.log("Service Worker: Activated and ready to handle fetch events and cache sync operations");
-    console.log("Service Worker: Activate event listener finished setting up event.waitUntil calls.");
+    logger2.log("Service Worker: Activated and ready to handle fetch events and cache sync operations");
+    logger2.log("Service Worker: Activate event listener finished setting up event.waitUntil calls.");
   });
   self.addEventListener("install", (event) => {
-    console.log("Service Worker: Install event triggered");
-    console.log("Service Worker: Debug mode is", debugMode ? "ON" : "OFF");
-    console.log("Service Worker: Calling skipWaiting() to activate immediately");
+    logger2.log("Service Worker: Install event triggered");
+    logger2.log("Service Worker: Debug mode is", debugMode ? "ON" : "OFF");
+    logger2.log("Service Worker: Calling skipWaiting() to activate immediately");
     self.skipWaiting();
   });
   var cacheSyncQueue = new BackgroundSyncPlugin("cache-sync-queue", {
@@ -2795,9 +2810,9 @@
       while (entry = await queue.shiftRequest()) {
         try {
           await fetch(entry.request);
-          console.log("Workbox: Successfully replayed failed sync request.");
+          logger2.log("Workbox: Successfully replayed failed sync request.");
         } catch (error) {
-          console.error("Workbox: Failed to replay sync request:", error);
+          logger2.error("Workbox: Failed to replay sync request:", error);
           await queue.unshiftRequest(entry);
           throw error;
         }
