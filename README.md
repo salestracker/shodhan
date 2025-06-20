@@ -26,10 +26,9 @@ An ai powered search GPT for searching and displaying results with caching and s
 
 ### Service Worker and Cache Sync
 - **Purpose**: A critical component for background cache synchronization, ensuring instant, privacy-preserving search results by fingerprinting anonymous queries at the edge and persisting them for quick access.
-- **Mechanism**: Utilizes **Workbox** for robust background sync, queuing and retrying failed requests to a configured webhook. The Service Worker operates on multiple sync triggers:
-  - **Periodic Background Sync**: Where supported (e.g., Chrome), syncs data even when the app is in the background.
-  - **Foreground Sync**: As a fallback for browsers without periodic sync support (e.g., Safari), syncs at intervals when the app is visible.
-  - **One-off Sync**: Triggers on connectivity changes to ensure data syncs when the user comes back online.
+- **Mechanism**: Utilizes **Workbox** for robust background sync, queuing and retrying failed requests to a configured webhook. The Service Worker operates on a hybrid model with two sync triggers:
+  - **Push Model (Immediate Sync)**: The main application notifies the Service Worker of new cache entries for immediate synchronization, working across all browsers including Safari.
+  - **Pull Model (Background Sync)**: Where supported (e.g., Chrome), leverages the Background Sync API to sync data in the background, particularly when connectivity is restored, as a progressive enhancement.
 - **Data Flow**: The Service Worker requests cached data from the main thread, filters for new entries based on timestamps, and sends them to the webhook for orchestration, minimizing redundant API calls.
 - **Further Reading**: For a detailed technical overview, implementation specifics, debugging, and troubleshooting, refer to [Cache Sync Implementation](docs/cache-sync-implementation.md).
 

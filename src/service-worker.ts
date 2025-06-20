@@ -45,7 +45,9 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
     if (data.type === 'SET_CONFIG' && data.webhookUrl) {
       webhookUrl = data.webhookUrl;
       if (data.useMock === false) {
-        logger.log('Service Worker: Using actual webhook URL (mock disabled):', webhookUrl);
+        if (debugMode) {
+          logger.log('Service Worker: Using actual webhook URL (mock disabled):', webhookUrl);
+        }
       } else {
         logger.log('Service Worker: Webhook URL set:', webhookUrl);
       }
@@ -69,7 +71,6 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   }
 });
 
-
 // Define syncCacheData function only once
 async function syncCacheData() {
   logger.log('Service Worker: syncCacheData() function entered.');
@@ -79,7 +80,9 @@ async function syncCacheData() {
     return;
   }
 
-  logger.log('Service Worker: Initiating syncCacheData. Webhook URL:', webhookUrl);
+  if (debugMode) {
+    logger.log('Service Worker: Initiating syncCacheData. Webhook URL:', webhookUrl);
+  }
 
   try {
     logger.log('Service Worker: Beginning request for cached data from main thread...');
@@ -95,7 +98,6 @@ async function syncCacheData() {
     for (const entry of cacheData) {
       if (!entry.value) continue;
       // Check both entry-level timestamp and value-level timestamp
-      // Ensure compatibility with toMillis expecting a single argument
       const entryTimestamp = entry.timestamp ? toMillis(entry.timestamp as string | number, 0) : (entry.value.timestamp ? toMillis(entry.value.timestamp as string | number, 0) : 0);
       const lastTs = toMillis(lastSyncTimestamp as string | number, 0);
       logger.log('Service Worker: Filter - Entry Timestamp:', entryTimestamp, 'Last Sync Timestamp:', lastTs);
@@ -107,7 +109,9 @@ async function syncCacheData() {
     logger.log('Service Worker: Filtered data for sync (entries newer than last sync):', filteredData);
 
     if (filteredData.length > 0) {
-      logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook:', webhookUrl);
+      if (debugMode) {
+        logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook:', webhookUrl);
+      }
       logger.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
       logger.log('Service Worker: Sync packet being sent:', JSON.stringify(filteredData, null, 2));
       
@@ -136,7 +140,9 @@ async function syncCacheData() {
           });
         } else {
           logger.error('Service Worker: Failed to sync cache data. Status:', response.status, 'Text:', response.statusText);
-          logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL:', webhookUrl);
+          if (debugMode) {
+            logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL:', webhookUrl);
+          }
           throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           // Throwing will cause Workbox background sync to retry
         }

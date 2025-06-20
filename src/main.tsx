@@ -7,64 +7,71 @@ import { logger } from './utils/logger'
 // Function to register the Service Worker
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    // Always register the Service Worker as /sw.js, vite-plugin-pwa handles dev/prod differences
     const swUrl = '/sw.js';
-    // Webhook URL for cache synchronization - use environment variable or fallback to default
     const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
 
     window.addEventListener('load', () => {
-      // Helper to send configuration messages to the active Service Worker
-      function sendSWConfig() {
-        const controller = navigator.serviceWorker.controller;
-        if (controller) {
-          logger.log('Sending configuration to Service Worker:', controller);
-          controller.postMessage({ type: 'SET_CONFIG', webhookUrl: webhookUrl, useMock: false });
-          if (import.meta.env.DEV) {
-            controller.postMessage({ type: 'SET_DEBUG_MODE', debugMode: true });
-            logger.log('Service Worker debug mode set to ON for development');
-          }
-        } else {
-          logger.warn('No Service Worker controller available to send config');
-        }
-      }
-
-      // Listen for controller change events to send config when a new SW takes control
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        logger.log('Service Worker controllerchange event fired');
-        if (navigator.serviceWorker.controller) {
-          sendSWConfig();
-        } else {
-          logger.warn('Controllerchange fired but no controller available yet');
-        }
-      });
-
-      // Ensure configuration is sent when Service Worker is ready
-      navigator.serviceWorker.ready.then(() => {
-        logger.log('Service Worker ready, sending configuration now');
-        logger.log('Service Worker controller state at ready:', navigator.serviceWorker.controller ? 'Controller exists' : 'No controller');
-        logger.log('Diagnostic: Service Worker controller at ready:', navigator.serviceWorker.controller);
-        if (navigator.serviceWorker.controller) {
-          sendSWConfig();
-        } else {
-          logger.log('No controller available yet, configuration will be sent on controllerchange or activation message');
-        }
-      });
-
-      // Register the Service Worker without manual cache-busting
-      logger.log(`Registering Service Worker: ${swUrl}`);
-      navigator.serviceWorker.register(swUrl, {
-        type: import.meta.env.DEV ? 'classic' : 'classic',
-        scope: '/'
-      })
+      navigator.serviceWorker.register(swUrl, { scope: '/' })
         .then(registration => {
           logger.log(`Service Worker registered with scope: ${registration.scope}`);
-          // If controller already active, send config immediately
-          if (navigator.serviceWorker.controller) {
-            logger.log('Active controller detected post-registration');
-            sendSWConfig();
-          } else {
-            logger.log('Awaiting controllerchange to send config');
+
+          // Function to send configuration to the service worker
+          const sendConfig = (sw: ServiceWorker) => {
+            logger.log('Sending configuration to Service Worker:', sw);
+            sw.postMessage({
+              type: 'SET_CONFIG',
+              webhookUrl: webhookUrl,
+              useMock: import.meta.env.VITE_USE_MOCK_WEBHOOK === 'true'
+            });
+            if (import.meta.env.DEV) {
+              sw.postMessage({ type: 'SET_DEBUG_MODE', debugMode: true });
+              logger.log('Service Worker debug mode set to ON for development');
+            }
+          };
+
+          // A new service worker has been found, but is waiting to activate.
+          if (registration.waiting) {
+            logger.log('A new service worker is waiting to activate.');
+            // We can prompt the user to update. For now, we'll just log it.
           }
+
+          // A new service worker is installing.
+          if (registration.installing) {
+            logger.log('A new service worker is installing.');
+            // Listen for state changes on the installing worker
+            registration.installing.addEventListener('statechange', (e) => {
+              if ((e.target as ServiceWorker).state === 'installed') {
+                logger.log('New service worker installed.');
+              }
+            });
+          }
+
+// Send config to the active service worker if it exists
+if (registration.active) {
+  logger.log('An active service worker is found.');
+  sendConfig(registration.active);
+}
+
+// Register background sync if supported
+if ('sync' in registration) {
+  registration.sync.register('sync-cache')
+    .then(() => {
+      logger.log('Background Sync registered for tag: sync-cache');
+    })
+    .catch(error => {
+      logger.error('Background Sync registration failed:', error);
+    });
+} else {
+  logger.log('Background Sync not supported by this browser. Falling back to push model only.');
+}
+
+          // Listen for new worker to take control
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            logger.log('New service worker has taken control.');
+            if (navigator.serviceWorker.controller) {
+              sendConfig(navigator.serviceWorker.controller);
+            }
+          });
         })
         .catch(error => logger.error('Service Worker registration failed:', error));
     });

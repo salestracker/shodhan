@@ -2520,7 +2520,7 @@
   };
 
   // src/utils/timestampUtils.ts
-  function toMillis(input, defaultValue = 0) {
+  function toMillis(input, defaultValue) {
     if (typeof input === "number") return input;
     if (typeof input === "string") {
       const parsed = Date.parse(input);
@@ -2551,7 +2551,9 @@
       if (data.type === "SET_CONFIG" && data.webhookUrl) {
         webhookUrl = data.webhookUrl;
         if (data.useMock === false) {
-          logger2.log("Service Worker: Using actual webhook URL (mock disabled):", webhookUrl);
+          if (debugMode) {
+            logger2.log("Service Worker: Using actual webhook URL (mock disabled):", webhookUrl);
+          }
         } else {
           logger2.log("Service Worker: Webhook URL set:", webhookUrl);
         }
@@ -2581,7 +2583,9 @@
       logger2.warn("Service Worker: Webhook URL not set. Cannot sync cache.");
       return;
     }
-    logger2.log("Service Worker: Initiating syncCacheData. Webhook URL:", webhookUrl);
+    if (debugMode) {
+      logger2.log("Service Worker: Initiating syncCacheData. Webhook URL:", webhookUrl);
+    }
     try {
       logger2.log("Service Worker: Beginning request for cached data from main thread...");
       const cacheData = await requestCacheDataFromMainThread();
@@ -2603,7 +2607,9 @@
       logger2.log("Service Worker: Filtered data length after manual filtering:", filteredData.length);
       logger2.log("Service Worker: Filtered data for sync (entries newer than last sync):", filteredData);
       if (filteredData.length > 0) {
-        logger2.log("Service Worker: Sync triggered. Sending filtered cache data to webhook:", webhookUrl);
+        if (debugMode) {
+          logger2.log("Service Worker: Sync triggered. Sending filtered cache data to webhook:", webhookUrl);
+        }
         logger2.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
         logger2.log("Service Worker: Sync packet being sent:", JSON.stringify(filteredData, null, 2));
         try {
@@ -2627,7 +2633,9 @@
             });
           } else {
             logger2.error("Service Worker: Failed to sync cache data. Status:", response.status, "Text:", response.statusText);
-            logger2.error("Service Worker: ERROR - Data was NOT sent to webhook URL:", webhookUrl);
+            if (debugMode) {
+              logger2.error("Service Worker: ERROR - Data was NOT sent to webhook URL:", webhookUrl);
+            }
             throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           }
         } catch (error) {
