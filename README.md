@@ -166,7 +166,7 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
    - **Fork the Repository**: Create your own fork of the code.
    - **Clone the Fork**: Clone your fork to your local machine.
    - **Create a Branch**: Make your changes in a new branch with a descriptive name (e.g., `feature/add-auth` or `bugfix/fix-cache-issue`).
-   - **Commit Changes**: Commit your changes with clear, concise commit messages following the [conventional commits](https://www.conventionalcommits.org/) format if possible.
+   - **Commit Changes**: Commit your changes with clear, concise commit messages summarizing the intent of each change (e.g., "move esbuild to dependencies for production builds"), following the [conventional commits](https://www.conventionalcommits.org/) format if possible.
    - **Push Changes**: Push your branch to your fork on GitHub.
    - **Submit a Pull Request**: Open a Pull Request (PR) from your branch to the `main` branch of this repository. Ensure your PR description explains the purpose of the changes and references any related issues.
 3. **Review Architectural Decisions**: Before proposing significant changes, please review the [Architectural Decision Records (ADRs)](docs/adr/) in the `docs/adr` directory to understand the project's design choices and rationale.
