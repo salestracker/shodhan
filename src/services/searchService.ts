@@ -4,12 +4,13 @@ import {
   getConversationThread 
 } from './cacheService';
 import { sendSearchResultsToServiceWorker } from '../utils/serviceWorkerMessenger';
+import { logger } from '../utils/logger';
 
 // Diagnostic: initial Service Worker controller state on module load
 if ('serviceWorker' in navigator) {
-  console.log('Diagnostic: initial SW controller on module load:', navigator.serviceWorker.controller);
+  logger.log('Diagnostic: initial SW controller on module load:', navigator.serviceWorker.controller);
 } else {
-  console.log('Diagnostic: serviceWorker unsupported in this environment');
+  logger.log('Diagnostic: serviceWorker unsupported in this environment');
 }
 import type { SearchResult } from '../types/search';
 
@@ -70,7 +71,7 @@ export const searchWithDeepSeek = async (
     }
   }
 
-  console.log('Cache miss for query:', query); // Debug logging
+  logger.log('Cache miss for query:', query); // Debug logging
 
   try {
     const controller = new AbortController();
@@ -81,7 +82,7 @@ export const searchWithDeepSeek = async (
       ? `Previous answer: "${parentResult.content.substring(0, 200)}...". Follow-up question: ${query}`
       : query;
 
-    console.log('[DEBUG] Calling Supabase edge function with query:', finalQuery);
+    logger.log('[DEBUG] Calling Supabase edge function with query:', finalQuery);
     const supabaseUrl = import.meta.env.VITE_SUPABASE_EDGE_FUNCTION_URL;
     const response = await fetch(
       supabaseUrl,
@@ -98,13 +99,13 @@ export const searchWithDeepSeek = async (
         signal: controller.signal
       }
     );
-    console.log('[DEBUG] Supabase response status:', response.status);
+    logger.log('[DEBUG] Supabase response status:', response.status);
 
     clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`HTTP ${response.status}:`, errorText);
+      logger.error(`HTTP ${response.status}:`, errorText);
       throw new Error(`Server error: ${response.status}`);
     }
 
@@ -134,14 +135,14 @@ export const searchWithDeepSeek = async (
     // Notify Service Worker for immediate sync
     await sendSearchResultsToServiceWorker(processedResults)
       .then(() => {
-        console.log('[DEBUG] Successfully notified Service Worker of new search results for synchronization');
+        logger.log('[DEBUG] Successfully notified Service Worker of new search results for synchronization');
       })
       .catch(error => {
-        console.warn('[DEBUG] Failed to notify Service Worker of new search results:', error);
+        logger.warn('[DEBUG] Failed to notify Service Worker of new search results:', error);
       });
     return processedResults;
   } catch (error) {
-    console.error('Search service error:', error);
+    logger.error('Search service error:', error);
     return [
       {
         id: 'fallback-1',

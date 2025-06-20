@@ -6,6 +6,7 @@ import { Home, Brain, History, Sparkles } from 'lucide-react';
 import SearchBar from './SearchBar';
 import { searchWithDeepSeek } from '@/services/searchService';
 import type { SearchResult } from '../types/search';
+import { logger } from '../utils/logger';
 
 export interface HistoryItem {
   id: string;
@@ -31,9 +32,9 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
       try {
         const history = await getSearchHistory();
         setHistoryItems(history);
-        console.log("History loaded:", history);
+        logger.log("History loaded:", history);
       } catch (error) {
-        console.error("Failed to load history:", error);
+        logger.error("Failed to load history:", error);
       }
     };
     
@@ -60,7 +61,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
         });
       }
     } catch (error) {
-      console.error('Search failed:', error);
+      logger.error('Search failed:', error);
       setCurrentSearchResult({
         id: `error-${Date.now()}`,
         title: `SearchGPT: ${query}`,
@@ -98,7 +99,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
         setForceUpdate(prev => prev + 1); // Force re-render
       }
     } catch (error) {
-      console.error('Follow-up search failed:', error);
+      logger.error('Follow-up search failed:', error);
       // Reset isReplying on error
       setCurrentSearchResult({
         ...currentSearchResult,
@@ -110,7 +111,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
 
   // Handle history item click
   const handleHistoryClick = useCallback((historyId: string, query: string) => {
-    console.log(`History item clicked: ${historyId}`);
+    logger.log(`History item clicked: ${historyId}`);
     // Use the same search logic as a new query to leverage built-in caching
     handleSearch(query);
   }, [handleSearch]);

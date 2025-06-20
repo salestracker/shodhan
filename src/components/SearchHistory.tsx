@@ -3,6 +3,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { SearchHistoryItem } from '@/types/search';
 import { Button } from './ui/button';
 import { History } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 interface SearchHistoryProps {
   onSelect: (id: string, query: string) => void;
@@ -34,7 +35,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onSelect }) => {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[DEBUG] History item clicked:', item);
+              logger.log('[DEBUG] History item clicked:', item);
               onSelect(item.id, item.query);
             }}
           >
