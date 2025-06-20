@@ -9,7 +9,7 @@ function registerServiceWorker() {
     // Always register the Service Worker as /sw.js, vite-plugin-pwa handles dev/prod differences
     const swUrl = '/sw.js';
     // Webhook URL for cache synchronization - use environment variable or fallback to default
-    const webhookUrl = import.meta.env.VITE_WEBHOOK_URL || 'https://hook.eu2.make.com/g9mekdy4dvy79hjlui4cxle64a3udcof';
+    const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
 
     window.addEventListener('load', () => {
       // Helper to send configuration messages to the active Service Worker
@@ -83,9 +83,8 @@ createRoot(document.getElementById('root')!).render(
 
 // Set up a message listener for Service Worker requests
 if ('serviceWorker' in navigator) {
-  // Webhook URL for cache synchronization - use environment variable or fallback to default
-  const webhookUrl = import.meta.env.VITE_WEBHOOK_URL || 'https://hook.eu2.make.com/g9mekdy4dvy79hjlui4cxle64a3udcof';
-
+  // Use the same webhookUrl as defined earlier for consistency
+  const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
   navigator.serviceWorker.addEventListener('message', (event) => {
     console.log('Main thread: Received message from Service Worker:', event.data);
     if (event.data && event.data.type === 'REQUEST_CACHE_DATA') {
