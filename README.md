@@ -1,6 +1,9 @@
 # Shodhan - An AI SearchGPT
 
-A frontend application for searching and displaying results with caching and synchronization capabilities.
+An ai powered search GPT for searching and displaying results with caching and synchronization capabilities.
+
+![Shodhan](https://github.com/user-attachments/assets/6b8f8e6f-86fd-49e4-8d7d-a0f6ef6f8cc3)
+
 
 ## Key Features
 - **AI-Powered Search**: Uses LLM API for comprehensive, cited answers
