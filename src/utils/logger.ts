@@ -1,4 +1,4 @@
-const isDevelopment = (import.meta.env.DEV === 1);
+const isDevelopment = import.meta.env.DEV;
 
 export const logger = {
   log: (...args: unknown[]) => {
