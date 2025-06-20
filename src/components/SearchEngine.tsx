@@ -5,33 +5,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Home, Brain, History, Sparkles } from 'lucide-react';
 import SearchBar from './SearchBar';
 import { searchWithDeepSeek } from '@/services/searchService';
-
-export type SearchResult = {
-  id: string;
-  title: string;
-  content: string;
-  confidence: number;
-  category: string;
-  timestamp: string | number;
-  sources?: string;
-  parentId?: string;
-  followUpQuery?: string;
-  replies?: SearchResult[];
-  isReplying?: boolean;
-};
-
-export const SearchResultType = {
-  id: '',
-  title: '',
-  content: '',
-  confidence: 0,
-  category: '',
-  timestamp: '',
-  sources: undefined,
-  parentId: undefined,
-  followUpQuery: undefined,
-  replies: undefined
-};
+import type { SearchResult } from '@/types/search';
 
 export interface HistoryItem {
   id: string;
