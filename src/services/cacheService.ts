@@ -1,5 +1,4 @@
-import type { SearchResult } from '../components/SearchEngine';
-import type { SearchHistoryItem } from '../types/search';
+import type { SearchResult, SearchHistoryItem } from '../types/search';
 
 interface CacheEntry {
   value: SearchResult;

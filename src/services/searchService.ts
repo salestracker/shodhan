@@ -11,7 +11,7 @@ if ('serviceWorker' in navigator) {
 } else {
   console.log('Diagnostic: serviceWorker unsupported in this environment');
 }
-import type { SearchResult } from '../components/SearchEngine';
+import type { SearchResult } from '../types/search';
 
 interface SearchResponse {
   results: SearchResult[];
