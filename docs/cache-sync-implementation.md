@@ -91,7 +91,7 @@ graph TD
 
 ### Configuring the Webhook URL
 
-- Set the environment variable `VITE_WEBHOOK_URL` in a `.env` file or directly in your deployment environment to specify the target webhook for cache data synchronization. If not set, it defaults to a predefined URL or a local fallback like `http://localhost:8080/sync-cache`.
+- Set the environment variable `VITE_CACHE_WEBHOOK_URL` in a `.env` file or directly in your deployment environment to specify the target webhook for cache data synchronization. If not set, it defaults to a predefined URL or a local fallback like `http://localhost:8080/sync-cache`.
 
 ## Debugging and Troubleshooting
 
