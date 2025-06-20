@@ -161,7 +161,7 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
 
 ### How to Contribute
 
-1. **Report Bugs or Suggest Features**: Use [GitHub Issues](https://github.com/your-username/search-gpt-answers/issues) to report bugs or suggest enhancements. Please provide as much detail as possible, including steps to reproduce the issue or a clear description of the feature.
+1. **Report Bugs or Suggest Features**: Use [GitHub Issues](https://github.com/salestracker/shodhan/issues/new/choose) to report bugs or suggest enhancements. Please provide as much detail as possible, including steps to reproduce the issue or a clear description of the feature.
 2. **Submit Changes**:
    - **Fork the Repository**: Create your own fork of the code.
    - **Clone the Fork**: Clone your fork to your local machine.
