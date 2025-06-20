@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import type { SearchResult } from '@/types/search';
+import type { SearchResult } from '../types/search';
 import './SearchResults.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

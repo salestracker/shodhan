@@ -5,7 +5,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Home, Brain, History, Sparkles } from 'lucide-react';
 import SearchBar from './SearchBar';
 import { searchWithDeepSeek } from '@/services/searchService';
-import type { SearchResult } from '@/types/search';
+import type { SearchResult } from '../types/search';
 
 export interface HistoryItem {
   id: string;
