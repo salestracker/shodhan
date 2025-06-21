@@ -4,7 +4,7 @@ import {
   getConversationThread 
 } from './cacheService';
 import { logger } from '../utils/logger';
-import { swReady } from '../utils/serviceWorkerClient';
+import { eventBus } from '../lib/eventBus';
 import type { SearchResult } from '../types/search';
 
 interface SearchResponse {
@@ -128,21 +128,15 @@ export const searchWithDeepSeek = async (
     // Asynchronously send data to the service worker for background sync.
     const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
     if (webhookUrl) {
-      // We await our custom swReady promise to ensure the service worker is ready.
-      swReady.then(() => {
-        if (navigator.serviceWorker.controller) {
-          logger.log('Service worker is ready, sending SYNC_DATA message.');
-          navigator.serviceWorker.controller.postMessage({
-            type: 'SYNC_DATA',
-            payload: {
-              webhookUrl,
-              payload: processedResults,
-            },
-          });
-        } else {
-          logger.error('Service worker controller not found. Cannot send sync message.');
-        }
-      });
+      logger.log('Dispatching sync-request event to the event bus.');
+      eventBus.dispatchEvent(
+        new CustomEvent('sync-request', {
+          detail: {
+            webhookUrl,
+            payload: processedResults,
+          },
+        })
+      );
     } else {
       logger.warn('VITE_CACHE_WEBHOOK_URL is not defined. Skipping sync.');
     }
