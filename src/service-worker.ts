@@ -62,19 +62,33 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   const data = event.data as { type: string; payload?: SyncPayload };
 
   if (!data) {
+    logger.warn('Service Worker: Received an empty message.');
     return;
   }
 
-  // Handle SYNC_DATA message, which doesn't require a source.
-  if (data.type === 'SYNC_DATA' && data.payload) {
-    logger.log('Service Worker: Received SYNC_DATA, handling sync.');
-    event.waitUntil(handleSync(data.payload));
-  }
+  logger.log('Service Worker: Received message:', data);
 
-  // Handle PING message, which requires a source to reply to.
-  if (data.type === 'PING' && event.source) {
-    logger.log('Service Worker: Received PING, sending PONG.');
-    event.source.postMessage({ type: 'PONG' }, []);
+  switch (data.type) {
+    case 'SYNC_DATA':
+      if (data.payload) {
+        logger.log('Service Worker: Handling SYNC_DATA.');
+        event.waitUntil(handleSync(data.payload));
+      } else {
+        logger.error('Service Worker: SYNC_DATA message received without payload.');
+      }
+      break;
+
+    case 'PING':
+      if (event.source) {
+        logger.log('Service Worker: Responding to PING with PONG.');
+        event.source.postMessage({ type: 'PONG' }, []);
+      } else {
+        logger.error('Service Worker: PING message received without a source to reply to.');
+      }
+      break;
+
+    default:
+      logger.warn('Service Worker: Received unknown message type:', data.type);
   }
 });
 
