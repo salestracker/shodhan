@@ -45,13 +45,7 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (data) {
     if (data.type === 'SET_CONFIG' && data.webhookUrl) {
       webhookUrl = data.webhookUrl;
-      if (data.useMock === false) {
-        if (debugMode) {
-          logger.log('Service Worker: Using actual webhook URL (mock disabled):', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
-        }
-      } else {
-        logger.log('Service Worker: Webhook URL set:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
-      }
+      logger.log('Service Worker: Webhook URL set:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
     }
     if (data.type === 'SET_DEBUG_MODE') {
       debugMode = data.debugMode || false;
@@ -81,9 +75,7 @@ async function syncCacheData() {
     return;
   }
 
-    if (debugMode) {
-      logger.log('Service Worker: Initiating syncCacheData. Webhook URL:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
-    }
+    logger.log('Service Worker: Initiating syncCacheData. Webhook URL:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
 
   try {
     logger.log('Service Worker: Beginning request for cached data from main thread...');
@@ -110,9 +102,7 @@ async function syncCacheData() {
     logger.log('Service Worker: Filtered data for sync (entries newer than last sync):', filteredData);
 
     if (filteredData.length > 0) {
-      if (debugMode) {
-        logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
-      }
+      logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
       logger.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
       logger.log('Service Worker: Sync packet being sent:', JSON.stringify(filteredData, null, 2));
       
@@ -141,9 +131,7 @@ async function syncCacheData() {
           });
         } else {
           logger.error('Service Worker: Failed to sync cache data. Status:', response.status, 'Text:', response.statusText);
-          if (debugMode) {
-            logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
-          }
+          logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
           throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           // Throwing will cause Workbox background sync to retry
         }
