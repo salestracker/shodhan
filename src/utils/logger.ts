@@ -9,5 +9,9 @@ export const logger = {
   },
   error: (...args: unknown[]) => {
     if (isDevelopment) console.error(...args);
+  },
+  // Add the debug method for detailed development-only logging.
+  debug: (...args: unknown[]) => {
+    if (isDevelopment) console.debug(...args);
   }
 };

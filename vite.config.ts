@@ -13,15 +13,15 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'service-worker.ts',
       registerType: 'autoUpdate',
-      injectManifest: {
-        swSrc: 'src/service-worker.ts',
-        swDest: 'dist/sw.js',
-        minify: mode === 'production' && process.env.VITE_SW_MINIFY !== 'false', // Minify in production unless explicitly disabled
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       },
       devOptions: {
-        enabled: true, // Enable in dev mode to serve dev SW
-        type: 'classic'
+        enabled: true,
+        type: 'module',
       },
       manifest: false,
     }),
