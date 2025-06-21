@@ -29,10 +29,10 @@ setCacheNameDetails({
   runtime: 'runtime-cache',
 });
 
-logger.log('Service Worker: Initialized with debug mode:', self.location.hostname === 'localhost' ? 'ON (localhost detected)' : 'OFF');
-
 let webhookUrl = '';
-let debugMode = self.location.hostname === 'localhost'; // Debug mode flag, default to true for localhost
+let debugMode = import.meta.env.DEV; // Debug mode flag, set based on Vite's development environment variable
+
+logger.log('Service Worker: Initialized with debug mode:', debugMode ? 'ON' : 'OFF');
 
 logger.log('Service Worker: Setting up message listener for main thread communication');
 
@@ -46,10 +46,10 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
       webhookUrl = data.webhookUrl;
       if (data.useMock === false) {
         if (debugMode) {
-          logger.log('Service Worker: Using actual webhook URL (mock disabled):', webhookUrl);
+          logger.log('Service Worker: Using actual webhook URL (mock disabled): [REDACTED]');
         }
       } else {
-        logger.log('Service Worker: Webhook URL set:', webhookUrl);
+        logger.log('Service Worker: Webhook URL set: [REDACTED]');
       }
     }
     if (data.type === 'SET_DEBUG_MODE') {
@@ -80,9 +80,9 @@ async function syncCacheData() {
     return;
   }
 
-  if (debugMode) {
-    logger.log('Service Worker: Initiating syncCacheData. Webhook URL:', webhookUrl);
-  }
+    if (debugMode) {
+      logger.log('Service Worker: Initiating syncCacheData. Webhook URL: [REDACTED]');
+    }
 
   try {
     logger.log('Service Worker: Beginning request for cached data from main thread...');
@@ -110,7 +110,7 @@ async function syncCacheData() {
 
     if (filteredData.length > 0) {
       if (debugMode) {
-        logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook:', webhookUrl);
+        logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook: [REDACTED]');
       }
       logger.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
       logger.log('Service Worker: Sync packet being sent:', JSON.stringify(filteredData, null, 2));
@@ -141,7 +141,7 @@ async function syncCacheData() {
         } else {
           logger.error('Service Worker: Failed to sync cache data. Status:', response.status, 'Text:', response.statusText);
           if (debugMode) {
-            logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL:', webhookUrl);
+            logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL: [REDACTED]');
           }
           throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           // Throwing will cause Workbox background sync to retry
