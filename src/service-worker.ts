@@ -34,7 +34,6 @@ const handleSync = async (data: SyncPayload) => {
   }
 
     try {
-      logger.log('SW: Sending data to webhook:', { webhookUrl, payload });
       // We use fetch to send a POST request to the webhook.
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -45,7 +44,7 @@ const handleSync = async (data: SyncPayload) => {
       });
 
       if (response.ok) {
-        logger.log('SW: Successfully sent data to webhook.');
+        logger.log('SW: Successfully sent data to webhook:', { webhookUrl, payload });
       } else {
         logger.error('SW: Failed to send data to webhook.', response.statusText);
       }
