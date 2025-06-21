@@ -125,7 +125,7 @@ async function syncCacheData() {
           // Notify main thread of successful sync for UX notification
           self.clients.matchAll({ type: 'window' }).then(clients => {
             clients.forEach(client => {
-              logger.log('Service Worker: Notifying client of successful sync:', client.url);
+              logger.log('Service Worker: Notifying client of successful sync:', debugMode ? client.url: REDACTED_URL_PLACEHOLDER);
               client.postMessage({ type: 'SYNC_SUCCESS_NOTIFICATION' });
             });
           });
@@ -309,7 +309,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
       // Notify main thread explicitly that Service Worker is active and controlling
       self.clients.matchAll({ type: 'window' }).then(clients => {
         clients.forEach(client => {
-          logger.log('Service Worker: Notifying client of activation:', client.url);
+          logger.log('Service Worker: Notifying client of activation:', debugMode ? client.url: REDACTED_URL_PLACEHOLDER);
           client.postMessage({ type: 'SERVICE_WORKER_ACTIVATED' });
         });
       });
