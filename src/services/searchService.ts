@@ -3,15 +3,8 @@ import {
   getSearchResult,
   getConversationThread 
 } from './cacheService';
-import { sendSearchResultsToServiceWorker } from '../utils/serviceWorkerMessenger';
 import { logger } from '../utils/logger';
-
-// Diagnostic: initial Service Worker controller state on module load
-if ('serviceWorker' in navigator) {
-  logger.log('Diagnostic: initial SW controller on module load:', navigator.serviceWorker.controller);
-} else {
-  logger.log('Diagnostic: serviceWorker unsupported in this environment');
-}
+import { swReady } from '../utils/serviceWorkerClient';
 import type { SearchResult } from '../types/search';
 
 interface SearchResponse {
@@ -132,14 +125,33 @@ export const searchWithDeepSeek = async (
     // Save the search result to local storage cache
     await saveSearchResult(processedResults[0]);
     
-    // Notify Service Worker for immediate sync
-    await sendSearchResultsToServiceWorker(processedResults)
-      .then(() => {
-        logger.log('[DEBUG] Successfully notified Service Worker of new search results for synchronization');
-      })
-      .catch(error => {
-        logger.warn('[DEBUG] Failed to notify Service Worker of new search results:', error);
+    // Asynchronously send data to the service worker for background sync.
+    const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
+    if (webhookUrl) {
+      // We await our custom swReady promise. This promise only resolves after the
+      // "ping-pong" handshake is complete, guaranteeing that the service worker
+      // is active and ready to intercept our fetch request.
+      swReady.then(() => {
+        logger.log('Handshake complete. Sending sync request.');
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            webhookUrl,
+            payload: processedResults,
+          }),
+        }).catch(error => {
+          // This catch block is for truly unexpected errors, as the service
+          // worker's handler should prevent network failures from reaching here.
+          logger.error('An unexpected error occurred during the sync fetch:', error);
+        });
       });
+    } else {
+      logger.warn('VITE_CACHE_WEBHOOK_URL is not defined. Skipping sync.');
+    }
+
     return processedResults;
   } catch (error) {
     logger.error('Search service error:', error);

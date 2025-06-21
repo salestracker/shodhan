@@ -7,11 +7,10 @@
     "node": "20.x"
   },
     "scripts": {
-      "dev": "npm run build-sw && vite",
-      "build": "npm run build-sw && vite build",
-      "build:dev": "npm run build-sw && vite build --mode development",
-      "build:sw-unminified": "VITE_SW_MINIFY=false npm run build-sw && vite build",
-      "build-sw": "node build-sw.js",
+      "dev": "vite",
+      "build": "vite build",
+      "build:dev": "vite build --mode development",
+      "build:sw-unminified": "VITE_SW_MINIFY=false vite build",
       "lint": "eslint .",
       "preview": "vite preview",
       "serve": "npm run build && serve -s dist"

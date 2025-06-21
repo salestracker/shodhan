@@ -10,141 +10,100 @@ The cache sync system addresses the need for instant, privacy-preserving search 
 
 ## Architecture
 
-The implementation uses a hybrid model combining a custom Service Worker with Workbox for background sync, employing both "push" and "pull" mechanisms to ensure compatibility and optimal performance across different browsers. Below is the architectural flow:
+The architecture uses a "client-initiated sync" model. The client application is responsible for triggering the synchronization, and a Service Worker makes the process robust and network-resilient. This eliminates the complex, error-prone message passing of previous designs.
 
 ```mermaid
 graph TD
-  subgraph Browser_Main_Thread
-    App[React_Application]
-    CacheService[cacheService_ts_LocalStorage]
-    SW_Reg[Service_Worker_Registration]
-  end
+    subgraph Client Application
+        SearchService[searchService.ts]
+        SWClient[serviceWorkerClient.ts]
+    end
 
-  subgraph Service_Worker_Thread
-    SW[Workbox_powered_service_worker_js]
-    Workbox_BS[workbox_background_sync_Queue_for_failed_syncs]
-  end
+    subgraph Service Worker
+        SWorker[service-worker.ts]
+        BackgroundSync[Workbox BackgroundSyncPlugin]
+    end
 
-  subgraph External
-    Cache_Orchestrator[Cache_Orchestrator_Webhook_Receives_sync_data]
-  end
+    subgraph External Services
+        Webhook[Cache Orchestrator Webhook]
+    end
 
-  App -- Store_Update_Cache --> CacheService
-  App -- Register_SW_Pass_Config_Debug_Mode --> SW_Reg
-  App -- Push_Model_Trigger_Immediate_Sync --> SW
-  SW_Reg -- Pull_Model_Trigger_Background_Sync --> SW
-  SW -- Request_Cached_Data --> App
-  App -- Send_Cached_Data_CacheEntryForSync --> SW
-  SW -- Filter_Queue_Data_via_Workbox_BS --> Workbox_BS
-  Workbox_BS -- Send_Batched_Data_retries_on_failure --> Cache_Orchestrator
+    SearchService -- "1. User performs search" --> SearchService
+    SearchService -- "2. Fire-and-forget fetch('/api/sync')" --> SWorker
+    SWClient -- "Ensures SW is ready" --> SearchService
+    SWorker -- "3. Intercepts fetch" --> BackgroundSync
+    BackgroundSync -- "4. Queues request for reliable delivery" --> Webhook
+    Webhook -- "5. Processes data" --> Webhook
 ```
 
 ### Key Components
 
-1. **React Application (`src/main.tsx`)**:
-   - Registers the Service Worker and passes configuration (webhook URL, debug mode).
-   - Registers background sync with the tag 'sync-cache' for the "pull" model on supported browsers (e.g., Chrome).
-   - Communicates with the Service Worker to provide cached data on request, using `getAllCacheEntries()` to send complete `CacheEntryForSync` objects with timestamps.
+1.  **`serviceWorkerClient.ts`**: This client-side module manages the Service Worker lifecycle. It provides a simple promise (`swReady`) that resolves only when the worker is active and has completed a "ping-pong" handshake. This guarantees that the worker is ready to handle requests before the application tries to use it.
 
-2. **Cache Service (`src/services/cacheService.ts`)**:
-   - Manages local storage of search results with timestamps.
-   - Provides a method (`getAllCacheEntries`) to retrieve all cached entries for sync purposes, ensuring the Service Worker has access to data with the necessary timestamp information.
+2.  **`searchService.ts`**: After processing a search, this service initiates the synchronization. It calls `fetch('/api/sync', ...)` in a "fire-and-forget" manner, without `await`. This ensures the UI remains responsive while the sync request is handed off to the Service Worker.
 
-3. **Search Service (`src/services/searchService.ts`)**:
-   - Implements the "push" model by notifying the Service Worker of new search results immediately after they are saved to the cache, ensuring real-time synchronization across all browsers.
+3.  **`service-worker.ts`**: The Service Worker's role is now highly focused and simplified:
+    *   It uses Workbox to define a route that specifically intercepts `POST` requests to `/api/sync`.
+    *   It applies the `BackgroundSyncPlugin` to this route. This is the core of the new strategy. If the initial `fetch` fails (e.g., due to lost connectivity), Workbox automatically queues the request and retries it later when the network is available.
+    *   It no longer contains complex logic for data filtering, message passing, or configuration management.
 
-4. **Service Worker (`src/service-worker.ts` and `public/service-worker-dev.js`)**:
-   - Custom logic to filter cache data based on the last sync timestamp using a manual `for...of` loop to avoid issues with `Array.prototype.filter` in the Service Worker context.
-   - Uses Workbox's `BackgroundSyncPlugin` to queue and retry failed sync requests to the webhook.
-   - Handles messages from the main thread for configuration and new cache entry notifications (`CACHE_NEW_ENTRY`) for the "push" model, and listens for background sync events for the "pull" model.
-
-5. **Workbox Integration (`vite.config.ts`)**:
-   - Configured via `vite-plugin-pwa` to generate a Workbox-powered Service Worker using the `generateSW` strategy.
-   - Defines runtime caching rules and background sync capabilities for robust data synchronization.
+4.  **`vite.config.ts`**: The configuration uses the `injectManifest` strategy, which gives us full control over the custom `service-worker.ts` file while still benefiting from Workbox's build-time optimizations. `registerType: 'autoUpdate'` and `self.skipWaiting()` in the worker ensure that the latest version is always active during development.
 
 ## Implementation Details
 
-### Service Worker Registration and Background Sync (`src/main.tsx`)
+The core of the implementation is the interaction between the client application and the Service Worker, orchestrated by Workbox.
 
-- **Background Sync Registration (Pull Model)**: Registers a background sync with the tag 'sync-cache' if supported by the browser (e.g., Chrome). This enables the Service Worker to sync data in the background, particularly useful when connectivity is restored after being offline, acting as a progressive enhancement.
-- **Development Workaround**: In development mode, a static `public/service-worker-dev.js` is used to bypass MIME type issues with `vite-plugin-pwa`'s `dev-sw.js` virtual module, with `devOptions.enabled` set to `false` in `vite.config.ts` to prevent conflicts.
+1.  **Service Worker Readiness (`serviceWorkerClient.ts`)**:
+    *   The application doesn't attempt to sync data until it's certain the Service Worker is ready.
+    *   The `swReady` promise solves this by performing a "ping-pong" handshake. The client sends a "ping" message, and the promise only resolves when the worker responds with a "pong". This handshake is detailed in `ADR-010`.
 
-### Immediate Sync Trigger (`src/services/searchService.ts`)
+2.  **Initiating the Sync (`searchService.ts`)**:
+    *   After a search is complete, the service waits for `swReady` to resolve.
+    *   It then calls `fetch('/api/sync', ...)` with the search results in the request body.
+    *   Crucially, this call is **not** awaited. It's a "fire-and-forget" operation. This keeps the UI responsive, as the main thread is not blocked waiting for the network request to complete.
 
-- **Push Model**: After a new search result is saved to the cache, the `sendSearchResultsToServiceWorker()` function is called to notify the Service Worker via a `CACHE_NEW_ENTRY` message. This ensures immediate synchronization when the app is in use, working across all browsers including those without background sync support (e.g., Safari).
-
-### Cache Data Handling (`src/services/cacheService.ts`)
-
-- The `getAllCacheEntries` method retrieves all cache entries from `localStorage`, ensuring the Service Worker has access to the latest data for synchronization. This method returns `CacheEntryForSync` objects that include a top-level `timestamp` critical for filtering logic in the Service Worker.
-
-### Service Worker Logic (`src/service-worker.ts` and `public/service-worker-dev.js`)
-
-- **Message Handling**: Listens for configuration messages (`SET_CONFIG`, `SET_DEBUG_MODE`), foreground sync triggers (`TRIGGER_FOREGROUND_SYNC`), and new cache entry notifications (`CACHE_NEW_ENTRY`) from the main thread.
-- **Sync Logic**: Filters cache data based on the last sync timestamp using a manual `for...of` loop to avoid issues with `Array.prototype.filter`. This ensures only new entries are sent to the configured webhook URL. When debug mode is enabled, detailed logs show when a sync is triggered, the webhook URL, and the exact sync packet being sent.
-- **Workbox Background Sync**: Uses `BackgroundSyncPlugin` to queue failed requests for retry, ensuring data is eventually sent even if the initial attempt fails due to network issues.
-
-### Workbox Configuration (`vite.config.ts`)
-
-- Configured with `vite-plugin-pwa` to use a `generateSW` strategy, allowing Workbox to generate the Service Worker automatically for production builds without requiring manual manifest injection.
-- Defines a runtime caching rule for `/sync-cache` with `NetworkOnly` and background sync enabled to handle webhook communication robustly.
+3.  **Reliable Delivery (`service-worker.ts`)**:
+    *   The Service Worker has a route registered with Workbox that specifically matches `POST` requests to `/api/sync`.
+    *   This route uses the `NetworkOnly` strategy but is enhanced with the `BackgroundSyncPlugin`.
+    *   If the `fetch` call fails (e.g., the user goes offline), Workbox automatically adds the request to a queue in IndexedDB.
+    *   When network connectivity is restored, Workbox replays the request from the queue, guaranteeing the data is eventually delivered to the webhook.
 
 ## Usage
 
 ### Running the Application
 
-1. **Development**: Run `npm run dev` to start the Vite development server. The Service Worker will be registered using the static `public/service-worker-dev.js` workaround, and you can observe sync behavior in the browser's console (with debug mode enabled by default for local development).
-2. **Build**: Run `npm run build` to create a production build. The `vite-plugin-pwa` will generate the final Service Worker (`dev-dist/sw.js`) with Workbox integration using the `generateSW` strategy.
+1.  **Development**: Run `npm run dev`. The `vite-plugin-pwa` is configured for a seamless development experience. The Service Worker will auto-update on changes, preventing the "stale worker" problem.
+2.  **Build**: Run `npm run build`. Vite and `vite-plugin-pwa` will create a production-optimized build, including the final `sw.js` file.
 
 ### Configuring the Webhook URL
 
-- Set the environment variable `VITE_CACHE_WEBHOOK_URL` in a `.env` file or directly in your deployment environment to specify the target webhook for cache data synchronization. If not set, it defaults to a predefined URL or a local fallback like `http://localhost:8080/sync-cache`.
+-   The webhook URL is managed via the `VITE_CACHE_WEBHOOK_URL` environment variable. This is accessed in `searchService.ts` and included in the body of the `/api/sync` request. The Service Worker itself does not need to know this URL.
 
 ## Debugging and Troubleshooting
 
-### Enabling Debug Mode
+### Key Tools
 
-- Debug mode is automatically enabled when the app runs on `localhost` or `127.0.0.1`. This mode logs detailed information to the browser console from both the main thread and the Service Worker.
-- Check the browser's Developer Tools (Console tab) for logs prefixed with "Service Worker:" to see sync operations, data filtering, webhook communication, and the exact sync packet being sent. Additionally, foreground sync events in the main thread log the sync interval and confirm when syncs are triggered.
+-   **Browser Developer Tools**:
+    -   **Application Tab**: Go to `Application > Service Workers` to see the current worker status, force updates, and go offline to test the background sync queue.
+    -   **Console Tab**: Look for logs from `logger.ts` to trace the flow from the client to the Service Worker.
+    -   **Network Tab**: Filter for `/api/sync` to inspect the request payload. When you go offline and trigger a sync, you will see the request fail here, but it will be queued by Workbox.
 
-### Common Issues and Fixes
+### Common Scenarios
 
-1. **Service Worker Not Registering**:
-   - **Symptom**: Console shows "SW registration failed" or no Service Worker is listed under Application > Service Workers in Developer Tools.
-   - **Fix**: Ensure you're running the app through a server (not directly from `file://`), as Service Workers require HTTPS or localhost. Use `npm run dev` for development. In development mode, verify that `public/service-worker-dev.js` is correctly set up and that `vite-plugin-pwa`'s `devOptions.enabled` is set to `false` in `vite.config.ts` to avoid MIME type conflicts.
+1.  **How to Test Background Sync**:
+    -   In DevTools, go to the **Network** tab and select "Offline".
+    -   Perform a search in the application. You will see the `fetch` to `/api/sync` fail in the console.
+    -   Go back to the **Network** tab and switch back to "Online".
+    -   In the **Application** tab, under `Storage > IndexedDB > workbox-background-sync > requests`, you will see the queued request disappear as Workbox successfully sends it.
 
-2. **Periodic Background Sync Not Supported**:
-   - **Symptom**: Console warns "Periodic Background Sync not supported by this browser."
-   - **Fix**: This is expected in browsers like Safari. The app falls back to foreground sync (when visible) and one-off sync (on connectivity changes). Verify that foreground sync logs appear when the tab is active.
+2.  **Service Worker Not Updating**:
+    -   **Symptom**: Code changes don't seem to apply.
+    -   **Fix**: The current setup with `registerType: 'autoUpdate'` and `self.skipWaiting()` should prevent this. However, a hard refresh (Cmd+Shift+R or Ctrl+Shift+R) or manually unregistering the old worker in the `Application` tab will resolve any lingering issues.
 
-3. **Webhook Sync Fails**:
-   - **Symptom**: Console shows "Failed to sync cache data" with a status code (e.g., 400) or error message.
-   - **Fix**: Check if the webhook URL is correct and accessible. Ensure the server at the webhook URL (e.g., Make.com scenario) is active and accepts POST requests with JSON data. Workbox will retry failed requests automatically; monitor the retry logs for resolution. If a 400 error persists, verify the external service configuration as it may not be set up to listen for incoming data.
-
-4. **No Data Being Synced**:
-   - **Symptom**: Logs show "No new data to sync" repeatedly despite new search results.
-   - **Fix**: Verify that `cacheService.ts` is storing data with timestamps in `localStorage`. Check if the `getAllCacheEntries` method returns data with the correct structure (`CacheEntryForSync` objects with top-level `timestamp`). If not, ensure `src/main.tsx` is using `getAllCacheEntries()` and not `getAllSearchResults()` when responding to Service Worker requests.
-
-5. **TypeScript Errors in `main.tsx` or `service-worker.ts`**:
-   - **Symptom**: Build errors related to `import.meta.env` or Service Worker API methods.
-   - **Fix**: The code uses type assertions to handle potential typing issues with Vite environment variables and Service Worker APIs. If errors persist, ensure your `tsconfig.json` is configured with `moduleResolution: "bundler"` and `target: "ES2020"` or higher, and verify that custom type definitions in `src/types/service-worker.d.ts` are correctly set up.
-
-6. **Benign Timeout Warning**:
-   - **Symptom**: Console shows "Timeout reached while waiting for cache data from main thread" even though sync succeeds.
-   - **Fix**: This is a benign warning caused by a race condition or overly aggressive timeout in the Service Worker. It does not impact functionality but can be addressed by adjusting the timeout duration in `src/service-worker.ts` or `public/service-worker-dev.js` if desired.
-
-### Debugging Tools
-
-- **Browser Developer Tools**: Use the "Application" tab to inspect Service Worker status and "Console" for debug logs.
-- **Network Tab**: Monitor outgoing requests to the webhook URL in the "Network" tab of Developer Tools to see payload and response details (e.g., `200 OK` or `400 Bad Request`).
-- **Local Storage Inspection**: Check `localStorage` in the "Application" tab to verify cache entries are being stored with timestamps.
-
-## Extending the Implementation
-
-- **Custom Sync Intervals**: Adjust the sync interval via the `VITE_CACHE_SYNC_INTERVAL` environment variable for both periodic and foreground sync (defaults to 5 minutes for foreground sync if not set).
-- **Enhanced Timestamp Storage**: Implement IndexedDB in the Service Worker for persistent `lastSyncTimestamp` storage across sessions (currently updated after each successful sync).
-- **Additional Webhook Endpoints**: Extend the Service Worker to support multiple webhook URLs or endpoints based on data type or priority.
-- **Timeout Optimization**: Refine the timeout mechanism in the Service Worker to eliminate benign warnings for cleaner debugging logs.
+3.  **Sync Request Fails with 4xx/5xx Error**:
+    -   **Symptom**: The `fetch` request in the Network tab shows a server error, and the request remains in the Workbox queue.
+    -   **Fix**: This indicates an issue with the receiving webhook, not the client-side code. Check the webhook server's logs. Workbox will continue to retry, so the data is not lost, but the server-side issue must be resolved.
 
 ## Conclusion
 
-This cache sync implementation provides a robust solution for SearchGPT's requirement of instant, privacy-preserving search results. By combining custom Service Worker logic with Workbox's background sync capabilities, comprehensive fallbacks, and specific workarounds for development challenges, it ensures data persistence across various browser environments. Recent resolutions to filtering logic, data structure mismatches, and webhook configuration issues have solidified the system's reliability. New developers can use this guide to understand, debug, and extend the system as needed for future enhancements.
+The current cache sync implementation is a robust, resilient, and modern system that leverages the strengths of Service Workers and Workbox. By moving to a "client-initiated sync" model, we have eliminated the complexity and fragility of the previous message-passing architecture. The new system is easier to understand, debug, and maintain, and it provides a superior user experience by never blocking the main thread on network operations. The documentation has been updated to reflect this simpler, more powerful design.
