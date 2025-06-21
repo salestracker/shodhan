@@ -2660,11 +2660,11 @@
         if (clients && clients.length > 0) {
           logger2.log("Service Worker: Sending REQUEST_CACHE_DATA to", clients.length, "clients");
           clients.forEach((client) => {
-            logger2.log("Service Worker: Sending request to client:", client.url);
+            logger2.log("Service Worker: Sending request to client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
             const messageChannel = new MessageChannel();
-            logger2.log("Service Worker: MessageChannel created for cache data request to client:", client.url);
+            logger2.log("Service Worker: MessageChannel created for cache data request to client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
             messageChannel.port1.onmessage = (event) => {
-              logger2.log("Service Worker: Message received on port1 from client:", client.url);
+              logger2.log("Service Worker: Message received on port1 from client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
               if (event.data && event.data.cacheEntries) {
                 logger2.log("Service Worker: Cache data received from client:", event.data.cacheEntries.length, "entries");
                 clearTimeout(timeoutId);
@@ -2683,12 +2683,12 @@
               }
             };
             messageChannel.port1.onerror = (error) => {
-              logger2.error("Service Worker: Message channel error for client:", client.url, error);
+              logger2.error("Service Worker: Message channel error for client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER, error);
               if (!resolved) {
                 reject(error);
               }
             };
-            logger2.log("Service Worker: About to postMessage with port2 to client:", client.url);
+            logger2.log("Service Worker: About to postMessage with port2 to client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
             client.postMessage({ type: "REQUEST_CACHE_DATA" }, [messageChannel.port2]);
           });
         } else {
@@ -2775,7 +2775,7 @@
     self.clients.matchAll({ type: "window" }).then((clients) => {
       logger2.log(`Service Worker: Found ${clients.length} client(s) to claim`);
       clients.forEach((client) => {
-        logger2.log("Service Worker: Client URL:", client.url);
+        logger2.log("Service Worker: Client URL:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
       });
     });
     event.waitUntil(self.clients.claim().then(() => {
