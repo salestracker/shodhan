@@ -2536,11 +2536,7 @@
     if (data) {
       if (data.type === "SET_CONFIG" && data.webhookUrl) {
         webhookUrl = data.webhookUrl;
-        if (data.useMock === false) {
-          console.log("Service Worker: Using actual webhook URL (mock disabled):", webhookUrl);
-        } else {
-          console.log("Service Worker: Webhook URL set:", webhookUrl);
-        }
+        console.log("Service Worker: Webhook URL set:", webhookUrl);
       }
       if (data.type === "SET_DEBUG_MODE") {
         debugMode = data.debugMode || false;
