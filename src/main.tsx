@@ -21,7 +21,6 @@ function registerServiceWorker() {
             sw.postMessage({
               type: 'SET_CONFIG',
               webhookUrl: webhookUrl,
-              useMock: import.meta.env.VITE_USE_MOCK_WEBHOOK === 'true'
             });
             if (import.meta.env.DEV) {
               sw.postMessage({ type: 'SET_DEBUG_MODE', debugMode: true });
@@ -121,7 +120,7 @@ if ('serviceWorker' in navigator) {
       const controller = navigator.serviceWorker.controller;
       if (controller) {
         logger.log('Sending configuration to Service Worker:', controller);
-        controller.postMessage({ type: 'SET_CONFIG', webhookUrl, useMock: false });
+        controller.postMessage({ type: 'SET_CONFIG', webhookUrl });
         if (import.meta.env.DEV) {
           controller.postMessage({ type: 'SET_DEBUG_MODE', debugMode: true });
           logger.log('Service Worker debug mode set to ON for development');
