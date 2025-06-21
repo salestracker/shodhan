@@ -1,5 +1,4 @@
 import { precacheAndRoute } from 'workbox-precaching';
-import { Queue } from 'workbox-background-sync';
 import { logger } from './utils/logger';
 import type { SearchResult } from './types/search';
 
@@ -13,8 +12,6 @@ interface SyncPayload {
 // State variables
 let isClientReady = false;
 const earlySyncQueue: SyncPayload[] = [];
-
-const webhookSyncQueue = new Queue('webhook-sync-queue');
 
 const postMessageToClients = (message: object) => {
   self.clients.matchAll().then(clients => {
@@ -45,6 +42,7 @@ const handleSync = async (data: SyncPayload) => {
 
       if (response.ok) {
         logger.log('SW: Successfully sent data to webhook:', { webhookUrl, payload });
+        postMessageToClients({ type: 'SYNC_SUCCESS' });
       } else {
         logger.error('SW: Failed to send data to webhook.', response.statusText);
       }
