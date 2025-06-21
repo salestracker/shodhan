@@ -24,6 +24,9 @@ const postMessageToClients = (message: object) => {
 
 // The core sync logic, now triggered by a message.
 const handleSync = async (data: SyncPayload) => {
+  // Immediately notify the client that the sync message was received.
+  postMessageToClients({ type: 'SYNC_RECEIVED' });
+
   const { webhookUrl, payload } = data;
 
   if (!webhookUrl || !payload) {
