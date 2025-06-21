@@ -31,6 +31,7 @@ setCacheNameDetails({
 
 let webhookUrl = '';
 let debugMode = import.meta.env.DEV; // Debug mode flag, set based on Vite's development environment variable
+const REDACTED_URL_PLACEHOLDER = '[REDACTED]';
 
 logger.log('Service Worker: Initialized with debug mode:', debugMode ? 'ON' : 'OFF');
 
@@ -46,10 +47,10 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
       webhookUrl = data.webhookUrl;
       if (data.useMock === false) {
         if (debugMode) {
-          logger.log('Service Worker: Using actual webhook URL (mock disabled): [REDACTED]');
+          logger.log('Service Worker: Using actual webhook URL (mock disabled):', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
         }
       } else {
-        logger.log('Service Worker: Webhook URL set: [REDACTED]');
+        logger.log('Service Worker: Webhook URL set:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
       }
     }
     if (data.type === 'SET_DEBUG_MODE') {
@@ -81,7 +82,7 @@ async function syncCacheData() {
   }
 
     if (debugMode) {
-      logger.log('Service Worker: Initiating syncCacheData. Webhook URL: [REDACTED]');
+      logger.log('Service Worker: Initiating syncCacheData. Webhook URL:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
     }
 
   try {
@@ -110,7 +111,7 @@ async function syncCacheData() {
 
     if (filteredData.length > 0) {
       if (debugMode) {
-        logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook: [REDACTED]');
+        logger.log('Service Worker: Sync triggered. Sending filtered cache data to webhook:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
       }
       logger.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
       logger.log('Service Worker: Sync packet being sent:', JSON.stringify(filteredData, null, 2));
@@ -141,7 +142,7 @@ async function syncCacheData() {
         } else {
           logger.error('Service Worker: Failed to sync cache data. Status:', response.status, 'Text:', response.statusText);
           if (debugMode) {
-            logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL: [REDACTED]');
+            logger.error('Service Worker: ERROR - Data was NOT sent to webhook URL:', debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
           }
           throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           // Throwing will cause Workbox background sync to retry
