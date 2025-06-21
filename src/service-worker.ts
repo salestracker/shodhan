@@ -9,10 +9,6 @@ interface SyncPayload {
   payload: SearchResult[];
 }
 
-// State variables
-let isClientReady = false;
-const earlySyncQueue: SyncPayload[] = [];
-
 const postMessageToClients = (message: object) => {
   self.clients.matchAll().then(clients => {
     clients.forEach(client => {
@@ -22,7 +18,6 @@ const postMessageToClients = (message: object) => {
 };
 
 const handleSync = async (data: SyncPayload) => {
-  postMessageToClients({ type: 'SYNC_RECEIVED' });
   const { webhookUrl, payload } = data;
 
   if (!webhookUrl || !payload) {
@@ -30,34 +25,23 @@ const handleSync = async (data: SyncPayload) => {
     return;
   }
 
-    try {
-      // We use fetch to send a POST request to the webhook.
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-      if (response.ok) {
-        logger.log('SW: Successfully sent data to webhook:', { webhookUrl, payload });
-        postMessageToClients({ type: 'SYNC_SUCCESS' });
-      } else {
-        logger.error('SW: Failed to send data to webhook.', response.statusText);
-      }
-    } catch (error) {
-      logger.error('SW: Error sending data to webhook.', error);
+    if (response.ok) {
+      logger.log('SW: Successfully sent data to webhook:', { webhookUrl, payload });
+      postMessageToClients({ type: 'SYNC_SUCCESS' });
+    } else {
+      logger.error('SW: Failed to send data to webhook.', response.statusText);
     }
-};
-
-const processEarlySyncQueue = () => {
-  while (earlySyncQueue.length > 0) {
-    const data = earlySyncQueue.shift();
-    if (data) {
-      logger.log('SW: Processing queued sync data.');
-      handleSync(data);
-    }
+  } catch (error) {
+    logger.error('SW: Error sending data to webhook.', error);
   }
 };
 
@@ -68,28 +52,9 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   logger.log('SW: Received message:', data);
 
   switch (data.type) {
-    case 'CLIENT_READY':
-      isClientReady = true;
-      logger.log('SW: Client is ready. Processing early sync queue.');
-      processEarlySyncQueue();
-      break;
-
     case 'SYNC_DATA':
       if (data.payload) {
-        if (isClientReady) {
-          logger.log('SW: Handling SYNC_DATA immediately.');
-          event.waitUntil(handleSync(data.payload));
-        } else {
-          logger.log('SW: Client not ready. Queuing SYNC_DATA.');
-          earlySyncQueue.push(data.payload);
-        }
-      }
-      break;
-
-    case 'PING':
-      if (event.source) {
-        logger.log('SW: Responding to PING.');
-        event.source.postMessage({ type: 'PONG' }, []);
+        event.waitUntil(handleSync(data.payload));
       }
       break;
   }
