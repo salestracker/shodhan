@@ -33,24 +33,25 @@ const handleSync = async (data: SyncPayload) => {
     return;
   }
 
-  try {
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    logger.debug('SW: Successfully sent data to webhook', { webhookUrl, payload });
-    postMessageToClients({ type: 'SYNC_SUCCESS' });
-  } catch (error) {
-    logger.log('SW: Sync failed, queuing request');
-    await webhookSyncQueue.pushRequest({
-      request: new Request(webhookUrl, {
+    try {
+      logger.log('SW: Sending data to webhook:', { webhookUrl, payload });
+      // We use fetch to send a POST request to the webhook.
+      const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
-      }),
-    });
-  }
+      });
+
+      if (response.ok) {
+        logger.log('SW: Successfully sent data to webhook.');
+      } else {
+        logger.error('SW: Failed to send data to webhook.', response.statusText);
+      }
+    } catch (error) {
+      logger.error('SW: Error sending data to webhook.', error);
+    }
 };
 
 const processEarlySyncQueue = () => {
