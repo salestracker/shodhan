@@ -120,6 +120,14 @@ This document logs, analyzes, and describes the series of issues encountered whi
   - Noted for potential future optimization by adjusting the timeout duration or handling mechanism in `src/service-worker.ts` and `public/service-worker-dev.js`.
 - **Outcome**: The warning remains in logs but does not hinder the successful operation of cache synchronization. It can be addressed in a future refinement if needed.
 
+### 13. Stale Service Worker Preventing Handshake
+- **Issue Description**: The final and most critical issue was a stale Service Worker controlling the page. Even with `registerType: 'autoUpdate'`, the new worker would download but not activate, causing the client-worker handshake to fail and blocking all sync requests.
+- **Impact**: This was the final blocker preventing the entire cache synchronization feature from working reliably.
+- **Analysis**: The root cause was the browser's default Service Worker lifecycle, which keeps an old worker active until all client tabs are closed. The solution required forcing the new worker to take control immediately.
+- **Actions Taken**:
+  - Added an `install` event listener in `src/service-worker.ts` with `self.skipWaiting()`. This command forces the new Service Worker to activate immediately, replacing the stale one.
+- **Outcome**: This change, combined with `registerType: 'autoUpdate'`, definitively solved the stale worker problem. The handshake now completes reliably, and the cache sync functions as designed. This is documented in **ADR 010**.
+
 ## Comprehensive Analysis
 
 ### Root Causes of Issues
@@ -170,4 +178,4 @@ As of the latest actions, the cache synchronization mechanism is fully operation
 
 ## Conclusion
 
-The journey to resolve Service Worker issues in SearchGPT has been complex, involving MIME type errors, configuration mistakes with `vite-plugin-pwa`, procedural oversights, TypeScript compatibility challenges, strategy mismatches, filtering logic issues, data structure mismatches, external service configuration problems, and minor timeout warnings. Each issue was systematically addressed through analysis, corrective actions, and iterative learning, culminating in a configuration using the `generateSW` strategy and specific code adjustments that align with the architectural goals of `cache-sync-implementation.md`. This log serves as both a historical record and a troubleshooting guide, ensuring that future developers can navigate similar challenges with greater efficiency and understanding.
+The journey to resolve Service Worker issues in SearchGPT has been complex, involving a wide range of challenges from MIME type errors and build failures to subtle lifecycle and data handling bugs. Each issue was systematically addressed through analysis, corrective actions, and iterative learning. The final, stable solution relies on the `injectManifest` strategy, a custom service worker (`src/service-worker.ts`), and a robust activation strategy (`self.skipWaiting()`) to ensure reliability. This log serves as both a historical record and a troubleshooting guide, ensuring that future developers can navigate similar challenges with greater efficiency and understanding. All major issues are now resolved, and the cache synchronization system is fully operational.
