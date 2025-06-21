@@ -131,28 +131,22 @@ export const searchWithDeepSeek = async (
       // We await our custom swReady promise. This promise only resolves after the
       // "ping-pong" handshake is complete, guaranteeing that the service worker
       // is active and ready to intercept our fetch request.
-      swReady.then(async () => {
-        try {
-          logger.log('Handshake complete. Sending sync request.');
-          const response = await fetch('/api/sync', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              webhookUrl,
-              payload: processedResults,
-            }),
-          });
-          if (!response.ok) {
-            const errorText = await response.text();
-            logger.error(`Sync request failed with HTTP ${response.status}:`, errorText);
-          }
-        } catch (error) {
+      swReady.then(() => {
+        logger.log('Handshake complete. Sending sync request.');
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            webhookUrl,
+            payload: processedResults,
+          }),
+        }).catch(error => {
           // This catch block is for truly unexpected errors, as the service
           // worker's handler should prevent network failures from reaching here.
           logger.error('An unexpected error occurred during the sync fetch:', error);
-        }
+        });
       });
     } else {
       logger.warn('VITE_CACHE_WEBHOOK_URL is not defined. Skipping sync.');
