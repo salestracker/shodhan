@@ -10,10 +10,12 @@ interface SyncPayload {
   payload: SearchResult[];
 }
 
-// The queue will store failed requests and replay them when the network is available.
-const queue = new Queue('webhook-sync-queue');
+// State variables
+let isClientReady = false;
+const earlySyncQueue: SyncPayload[] = [];
 
-// Function to send a message to all clients.
+const webhookSyncQueue = new Queue('webhook-sync-queue');
+
 const postMessageToClients = (message: object) => {
   self.clients.matchAll().then(clients => {
     clients.forEach(client => {
@@ -22,32 +24,26 @@ const postMessageToClients = (message: object) => {
   });
 };
 
-// The core sync logic, now triggered by a message.
 const handleSync = async (data: SyncPayload) => {
-  // Immediately notify the client that the sync message was received.
   postMessageToClients({ type: 'SYNC_RECEIVED' });
-
   const { webhookUrl, payload } = data;
 
   if (!webhookUrl || !payload) {
-    logger.error('Service Worker: Invalid sync data received.', data);
+    logger.error('SW: Invalid sync data', data);
     return;
   }
 
   try {
-    // Attempt to send the data to the actual webhook.
     await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-
-    logger.debug('Service Worker: Successfully sent data to webhook:', { webhookUrl, payload });
+    logger.debug('SW: Successfully sent data to webhook', { webhookUrl, payload });
     postMessageToClients({ type: 'SYNC_SUCCESS' });
   } catch (error) {
-    logger.log('Service Worker: Sync failed, queuing request.');
-    // If the fetch fails, add the data to the queue.
-    await queue.pushRequest({
+    logger.log('SW: Sync failed, queuing request');
+    await webhookSyncQueue.pushRequest({
       request: new Request(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,52 +53,58 @@ const handleSync = async (data: SyncPayload) => {
   }
 };
 
-// This line is automatically injected by VitePWA to precache all our assets.
-precacheAndRoute(self.__WB_MANIFEST);
+const processEarlySyncQueue = () => {
+  while (earlySyncQueue.length > 0) {
+    const data = earlySyncQueue.shift();
+    if (data) {
+      logger.log('SW: Processing queued sync data.');
+      handleSync(data);
+    }
+  }
+};
 
-// Listen for messages from the client.
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   const data = event.data as { type: string; payload?: SyncPayload };
+  if (!data) return;
 
-  if (!data) {
-    logger.warn('Service Worker: Received an empty message.');
-    return;
-  }
-
-  logger.log('Service Worker: Received message:', data);
+  logger.log('SW: Received message:', data);
 
   switch (data.type) {
+    case 'CLIENT_READY':
+      isClientReady = true;
+      logger.log('SW: Client is ready. Processing early sync queue.');
+      processEarlySyncQueue();
+      break;
+
     case 'SYNC_DATA':
       if (data.payload) {
-        logger.log('Service Worker: Handling SYNC_DATA.');
-        event.waitUntil(handleSync(data.payload));
-      } else {
-        logger.error('Service Worker: SYNC_DATA message received without payload.');
+        if (isClientReady) {
+          logger.log('SW: Handling SYNC_DATA immediately.');
+          event.waitUntil(handleSync(data.payload));
+        } else {
+          logger.log('SW: Client not ready. Queuing SYNC_DATA.');
+          earlySyncQueue.push(data.payload);
+        }
       }
       break;
 
     case 'PING':
       if (event.source) {
-        logger.log('Service Worker: Responding to PING with PONG.');
+        logger.log('SW: Responding to PING.');
         event.source.postMessage({ type: 'PONG' }, []);
-      } else {
-        logger.error('Service Worker: PING message received without a source to reply to.');
       }
       break;
-
-    default:
-      logger.warn('Service Worker: Received unknown message type:', data.type);
   }
 });
 
-// When the service worker activates, it should immediately claim all clients.
+precacheAndRoute(self.__WB_MANIFEST);
+
 self.addEventListener('activate', (event: ExtendableEvent) => {
-  logger.log('Service Worker: Activated. Claiming clients.');
+  logger.log('SW: Activated. Claiming clients.');
   event.waitUntil(self.clients.claim());
 });
 
-// Ensure the new service worker takes control immediately.
 self.addEventListener('install', () => {
-  logger.log('Service Worker: Installed. Forcing activation.');
+  logger.log('SW: Installed. Forcing activation.');
   self.skipWaiting();
 });

@@ -22,9 +22,13 @@ navigator.serviceWorker.addEventListener('message', event => {
 
   // When we receive a "PONG", it means the handshake is complete.
   if (type === 'PONG') {
-    logger.log('Client: Received PONG from Service Worker. Handshake complete.');
+    logger.log('Client: Received PONG. Handshake complete. Signaling readiness.');
     // Resolve the promise to unblock any waiting application logic.
     resolveSwReady();
+    // Tell the service worker the client is ready to receive messages.
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLIENT_READY' });
+    }
   }
 });
 
