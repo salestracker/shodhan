@@ -20,12 +20,12 @@ const App = () => {
     if ('serviceWorker' in navigator) {
       const handleMessage = (event: MessageEvent) => {
         logger.log('App.tsx: Received message from Service Worker:', event.data);
-        if (event.data && event.data.type === 'SYNC_SUCCESS_NOTIFICATION') {
+        if (event.data && event.data.type === 'SYNC_SUCCESS') {
           logger.log('App.tsx: Showing toast for successful sync');
           toast({
             title: "Sync Successful",
-            description: "Synchronizing your search for better results",
-            duration: 3000,
+            description: "Your search results have been successfully synced.",
+            duration: 5000,
           });
         }
       };

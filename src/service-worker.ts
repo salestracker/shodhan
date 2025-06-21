@@ -76,6 +76,13 @@ const syncHandler = async ({ request }) => {
     // Log proof of successful transmission, only in development.
     logger.debug('Service Worker: Successfully sent data to webhook (direct):', { webhookUrl, payload });
 
+    // Notify all clients that the sync was successful.
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({ type: 'SYNC_SUCCESS' }, []);
+      });
+    });
+
     // If the fetch is successful, respond to the app with a success message.
     logger.log('Service Worker: Sync successful.');
     return new Response(JSON.stringify({ status: 'Sync successful' }), { status: 200 });
