@@ -12,6 +12,7 @@ import { NetworkOnly } from 'workbox-strategies';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
 import { setCacheNameDetails } from 'workbox-core';
 import { logger } from './utils/logger';
+import type { ServiceWorkerConfigMessage } from './types/service-worker-messages';
 
 /* eslint-disable no-console */
 // Placeholder for Workbox manifest injection
@@ -41,7 +42,7 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   logger.log('Service Worker: Raw message event received:', event);
   logger.log('Service Worker: Raw message data:', event.data);
   logger.log('*** SERVICE WORKER: MESSAGE RECEIVED ***', event.data);
-  const data = event.data as { type?: string; webhookUrl?: string; debugMode?: boolean; results?: unknown[] };
+  const data = event.data as ServiceWorkerConfigMessage | { type?: string; debugMode?: boolean; results?: unknown[] };
   if (data) {
     if (data.type === 'SET_CONFIG' && data.webhookUrl) {
       webhookUrl = data.webhookUrl;
