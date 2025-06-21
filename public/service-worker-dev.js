@@ -2530,8 +2530,8 @@
   }
 
   // src/service-worker.ts
-  var manifest = self.__WB_MANIFEST;
-  logger2.log("Service Worker: Workbox manifest placeholder initialized", manifest);
+  precacheAndRoute(self.__WB_MANIFEST);
+  logger2.log("Service Worker: Workbox manifest placeholder initialized", self.__WB_MANIFEST);
   setCacheNameDetails({
     prefix: "search-gpt",
     suffix: "v1",
