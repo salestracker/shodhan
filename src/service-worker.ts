@@ -11,16 +11,17 @@ import { registerRoute } from 'workbox-routing';
 import { NetworkOnly } from 'workbox-strategies';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
 import { setCacheNameDetails } from 'workbox-core';
+import { precacheAndRoute } from 'workbox-precaching';
 import { logger } from './utils/logger';
 import type { ServiceWorkerConfigMessage } from './types/service-worker-messages';
 
 /* eslint-disable no-console */
 // Placeholder for Workbox manifest injection
 // This is where Workbox will inject the list of files to precache
-const manifest = self.__WB_MANIFEST;
+precacheAndRoute(self.__WB_MANIFEST);
 
 // Log the manifest to ensure it's recognized during build
-logger.log('Service Worker: Workbox manifest placeholder initialized', manifest);
+logger.log('Service Worker: Workbox manifest placeholder initialized', self.__WB_MANIFEST);
 
 // Set cache names (optional, but good practice)
 setCacheNameDetails({
