@@ -61,17 +61,20 @@ precacheAndRoute(self.__WB_MANIFEST);
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   const data = event.data as { type: string; payload?: SyncPayload };
 
-  if (data && event.source) {
-    switch (data.type) {
-      case 'PING':
-        logger.log('Service Worker: Received PING, sending PONG.');
-        event.source.postMessage({ type: 'PONG' }, []);
-        break;
-      case 'SYNC_DATA':
-        logger.log('Service Worker: Received SYNC_DATA, handling sync.');
-        event.waitUntil(handleSync(data.payload));
-        break;
-    }
+  if (!data) {
+    return;
+  }
+
+  // Handle SYNC_DATA message, which doesn't require a source.
+  if (data.type === 'SYNC_DATA' && data.payload) {
+    logger.log('Service Worker: Received SYNC_DATA, handling sync.');
+    event.waitUntil(handleSync(data.payload));
+  }
+
+  // Handle PING message, which requires a source to reply to.
+  if (data.type === 'PING' && event.source) {
+    logger.log('Service Worker: Received PING, sending PONG.');
+    event.source.postMessage({ type: 'PONG' }, []);
   }
 });
 
