@@ -128,25 +128,20 @@ export const searchWithDeepSeek = async (
     // Asynchronously send data to the service worker for background sync.
     const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
     if (webhookUrl) {
-      // We await our custom swReady promise. This promise only resolves after the
-      // "ping-pong" handshake is complete, guaranteeing that the service worker
-      // is active and ready to intercept our fetch request.
+      // We await our custom swReady promise to ensure the service worker is ready.
       swReady.then(() => {
-        logger.log('Handshake complete. Sending sync request.');
-        fetch('/api/sync', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            webhookUrl,
-            payload: processedResults,
-          }),
-        }).catch(error => {
-          // This catch block is for truly unexpected errors, as the service
-          // worker's handler should prevent network failures from reaching here.
-          logger.error('An unexpected error occurred during the sync fetch:', error);
-        });
+        if (navigator.serviceWorker.controller) {
+          logger.log('Service worker is ready, sending SYNC_DATA message.');
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SYNC_DATA',
+            payload: {
+              webhookUrl,
+              payload: processedResults,
+            },
+          });
+        } else {
+          logger.error('Service worker controller not found. Cannot send sync message.');
+        }
       });
     } else {
       logger.warn('VITE_CACHE_WEBHOOK_URL is not defined. Skipping sync.');
