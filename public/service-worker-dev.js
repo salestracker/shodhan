@@ -2540,6 +2540,7 @@
   });
   var webhookUrl = "";
   var debugMode = false;
+  var REDACTED_URL_PLACEHOLDER = "[REDACTED]";
   logger2.log("Service Worker: Initialized with debug mode:", debugMode ? "ON" : "OFF");
   logger2.log("Service Worker: Setting up message listener for main thread communication");
   self.addEventListener("message", (event) => {
@@ -2550,13 +2551,7 @@
     if (data) {
       if (data.type === "SET_CONFIG" && data.webhookUrl) {
         webhookUrl = data.webhookUrl;
-        if (data.useMock === false) {
-          if (debugMode) {
-            logger2.log("Service Worker: Using actual webhook URL (mock disabled): [REDACTED]");
-          }
-        } else {
-          logger2.log("Service Worker: Webhook URL set: [REDACTED]");
-        }
+        logger2.log("Service Worker: Webhook URL set:", debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
       }
       if (data.type === "SET_DEBUG_MODE") {
         debugMode = data.debugMode || false;
@@ -2583,9 +2578,7 @@
       logger2.warn("Service Worker: Webhook URL not set. Cannot sync cache.");
       return;
     }
-    if (debugMode) {
-      logger2.log("Service Worker: Initiating syncCacheData. Webhook URL: [REDACTED]");
-    }
+    logger2.log("Service Worker: Initiating syncCacheData. Webhook URL:", debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
     try {
       logger2.log("Service Worker: Beginning request for cached data from main thread...");
       const cacheData = await requestCacheDataFromMainThread();
@@ -2607,9 +2600,7 @@
       logger2.log("Service Worker: Filtered data length after manual filtering:", filteredData.length);
       logger2.log("Service Worker: Filtered data for sync (entries newer than last sync):", filteredData);
       if (filteredData.length > 0) {
-        if (debugMode) {
-          logger2.log("Service Worker: Sync triggered. Sending filtered cache data to webhook: [REDACTED]");
-        }
+        logger2.log("Service Worker: Sync triggered. Sending filtered cache data to webhook:", debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
         logger2.log(`Service Worker: Sync packet contains ${filteredData.length} entries to sync`);
         logger2.log("Service Worker: Sync packet being sent:", JSON.stringify(filteredData, null, 2));
         try {
@@ -2627,15 +2618,13 @@
             await updateLastSyncTimestamp(Date.now());
             self.clients.matchAll({ type: "window" }).then((clients) => {
               clients.forEach((client) => {
-                logger2.log("Service Worker: Notifying client of successful sync:", client.url);
+                logger2.log("Service Worker: Notifying client of successful sync:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
                 client.postMessage({ type: "SYNC_SUCCESS_NOTIFICATION" });
               });
             });
           } else {
             logger2.error("Service Worker: Failed to sync cache data. Status:", response.status, "Text:", response.statusText);
-            if (debugMode) {
-              logger2.error("Service Worker: ERROR - Data was NOT sent to webhook URL: [REDACTED]");
-            }
+            logger2.error("Service Worker: ERROR - Data was NOT sent to webhook URL:", debugMode ? webhookUrl : REDACTED_URL_PLACEHOLDER);
             throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
           }
         } catch (error) {
@@ -2671,11 +2660,11 @@
         if (clients && clients.length > 0) {
           logger2.log("Service Worker: Sending REQUEST_CACHE_DATA to", clients.length, "clients");
           clients.forEach((client) => {
-            logger2.log("Service Worker: Sending request to client:", client.url);
+            logger2.log("Service Worker: Sending request to client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
             const messageChannel = new MessageChannel();
-            logger2.log("Service Worker: MessageChannel created for cache data request to client:", client.url);
+            logger2.log("Service Worker: MessageChannel created for cache data request to client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
             messageChannel.port1.onmessage = (event) => {
-              logger2.log("Service Worker: Message received on port1 from client:", client.url);
+              logger2.log("Service Worker: Message received on port1 from client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
               if (event.data && event.data.cacheEntries) {
                 logger2.log("Service Worker: Cache data received from client:", event.data.cacheEntries.length, "entries");
                 clearTimeout(timeoutId);
@@ -2694,12 +2683,12 @@
               }
             };
             messageChannel.port1.onerror = (error) => {
-              logger2.error("Service Worker: Message channel error for client:", client.url, error);
+              logger2.error("Service Worker: Message channel error for client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER, error);
               if (!resolved) {
                 reject(error);
               }
             };
-            logger2.log("Service Worker: About to postMessage with port2 to client:", client.url);
+            logger2.log("Service Worker: About to postMessage with port2 to client:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
             client.postMessage({ type: "REQUEST_CACHE_DATA" }, [messageChannel.port2]);
           });
         } else {
@@ -2786,14 +2775,14 @@
     self.clients.matchAll({ type: "window" }).then((clients) => {
       logger2.log(`Service Worker: Found ${clients.length} client(s) to claim`);
       clients.forEach((client) => {
-        logger2.log("Service Worker: Client URL:", client.url);
+        logger2.log("Service Worker: Client URL:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
       });
     });
     event.waitUntil(self.clients.claim().then(() => {
       logger2.log("Service Worker: self.clients.claim() completed. Service Worker now controls all clients.");
       self.clients.matchAll({ type: "window" }).then((clients) => {
         clients.forEach((client) => {
-          logger2.log("Service Worker: Notifying client of activation:", client.url);
+          logger2.log("Service Worker: Notifying client of activation:", debugMode ? client.url : REDACTED_URL_PLACEHOLDER);
           client.postMessage({ type: "SERVICE_WORKER_ACTIVATED" });
         });
       });
