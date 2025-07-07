@@ -33,7 +33,8 @@ Your task is to provide a concise, cited answer to a follow-up question, buildin
 
 export const searchWithDeepSeek = async (
   query: string,
-  parentResult?: SearchResult
+  parentResult?: SearchResult,
+  userId?: string
 ): Promise<SearchResult[]> => {
   // Generate consistent cache key using query hash
   const generateQueryHash = (q: string) => {
@@ -129,11 +130,18 @@ export const searchWithDeepSeek = async (
     const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
     if (webhookUrl) {
       logger.log('Dispatching sync-request event to the event bus.');
+      // Include user ID and fingerprint ID in the payload if available
+      const finalUserId = userId || 'unknown';
+      const fingerprintId = localStorage.getItem('searchGptFingerprintId') || 'unknown';
       eventBus.dispatchEvent(
         new CustomEvent('sync-request', {
           detail: {
             webhookUrl,
-            payload: processedResults,
+            payload: {
+              results: processedResults,
+              userId: finalUserId,
+              fingerprintId: fingerprintId
+            },
           },
         })
       );

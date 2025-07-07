@@ -10,7 +10,7 @@ The cache sync system addresses the need for instant, privacy-preserving search 
 
 ## Architecture
 
-The architecture uses a "client-initiated sync" model. The client application is responsible for triggering the synchronization, and a Service Worker makes the process robust and network-resilient. This eliminates the complex, error-prone message passing of previous designs.
+The architecture uses a hybrid cache synchronization model combining both "push" and "pull" mechanisms for robust, network-resilient synchronization. This approach ensures compatibility across different browsers while providing an optimal user experience with immediate syncs when the app is in use, eliminating the complex, error-prone message passing of previous designs.
 
 ```mermaid
 graph TD
@@ -40,33 +40,39 @@ graph TD
 
 1.  **`serviceWorkerClient.ts`**: This client-side module manages the Service Worker lifecycle. It provides a simple promise (`swReady`) that resolves only when the worker is active and has completed a "ping-pong" handshake. This guarantees that the worker is ready to handle requests before the application tries to use it.
 
-2.  **`searchService.ts`**: After processing a search, this service initiates the synchronization. It calls `fetch('/api/sync', ...)` in a "fire-and-forget" manner, without `await`. This ensures the UI remains responsive while the sync request is handed off to the Service Worker.
+2.  **`searchService.ts`**: After processing a search, this service initiates synchronization using the push model. It sends a `CACHE_NEW_ENTRY` message to the Service Worker to trigger immediate synchronization, ensuring real-time data updates across all browsers.
 
-3.  **`service-worker.ts`**: The Service Worker's role is now highly focused and simplified:
-    *   It uses Workbox to define a route that specifically intercepts `POST` requests to `/api/sync`.
-    *   It applies the `BackgroundSyncPlugin` to this route. This is the core of the new strategy. If the initial `fetch` fails (e.g., due to lost connectivity), Workbox automatically queues the request and retries it later when the network is available.
-    *   It no longer contains complex logic for data filtering, message passing, or configuration management.
+3.  **`service-worker.ts`**: The Service Worker's role is focused on handling synchronization requests:
+    *   It uses Workbox to define a route that intercepts synchronization requests.
+    *   It applies the `BackgroundSyncPlugin` for the pull model, queuing requests and retrying them when connectivity is restored on supported browsers.
+    *   It processes `CACHE_NEW_ENTRY` messages from the push model to sync data immediately when notified by the application.
 
-4.  **`vite.config.ts`**: The configuration uses the `injectManifest` strategy, which gives us full control over the custom `service-worker.ts` file while still benefiting from Workbox's build-time optimizations. `registerType: 'autoUpdate'` and `self.skipWaiting()` in the worker ensure that the latest version is always active during development.
+4.  **`vite.config.ts`**: The configuration uses the `injectManifest` strategy, providing full control over the custom `service-worker.ts` file while benefiting from Workbox's build-time optimizations. `registerType: 'autoUpdate'` and `self.skipWaiting()` in the worker ensure that the latest version is always active during development.
+
+5.  **`main.tsx`**: Registers the Background Sync API with the tag 'sync-cache' for the pull model, enabling background synchronization on supported browsers (e.g., Chrome) as a progressive enhancement.
 
 ## Implementation Details
 
-The core of the implementation is the interaction between the client application and the Service Worker, orchestrated by Workbox.
+The core of the implementation is the hybrid interaction between the client application and the Service Worker, combining immediate push notifications with background pull synchronization for robust delivery.
 
 1.  **Service Worker Readiness (`serviceWorkerClient.ts`)**:
     *   The application doesn't attempt to sync data until it's certain the Service Worker is ready.
     *   The `swReady` promise solves this by performing a "ping-pong" handshake. The client sends a "ping" message, and the promise only resolves when the worker responds with a "pong". This handshake is detailed in `ADR-010`.
 
-2.  **Initiating the Sync (`searchService.ts`)**:
-    *   After a search is complete, the service waits for `swReady` to resolve.
-    *   It then calls `fetch('/api/sync', ...)` with the search results in the request body.
-    *   Crucially, this call is **not** awaited. It's a "fire-and-forget" operation. This keeps the UI responsive, as the main thread is not blocked waiting for the network request to complete.
+2.  **Push Model - Immediate Sync (`searchService.ts`)**:
+    *   After a search is complete and results are saved to the cache, the service waits for `swReady` to resolve.
+    *   It then sends a `CACHE_NEW_ENTRY` message to the Service Worker to trigger immediate synchronization.
+    *   This operation ensures real-time updates and works across all browsers, including those without Background Sync API support.
 
-3.  **Reliable Delivery (`service-worker.ts`)**:
-    *   The Service Worker has a route registered with Workbox that specifically matches `POST` requests to `/api/sync`.
-    *   This route uses the `NetworkOnly` strategy but is enhanced with the `BackgroundSyncPlugin`.
-    *   If the `fetch` call fails (e.g., the user goes offline), Workbox automatically adds the request to a queue in IndexedDB.
-    *   When network connectivity is restored, Workbox replays the request from the queue, guaranteeing the data is eventually delivered to the webhook.
+3.  **Pull Model - Background Sync (`main.tsx`)**:
+    *   During Service Worker registration, the application checks for Background Sync API support.
+    *   If supported, it registers with `registration.sync.register('sync-cache')` to enable background synchronization events.
+    *   This allows sync to occur even when the app is not open, as a progressive enhancement on browsers like Chrome.
+
+4.  **Reliable Delivery (`service-worker.ts`)**:
+    *   The Service Worker handles both push and pull sync triggers, executing the same `syncCacheData()` function for consistent logic.
+    *   For the pull model, Workbox's `BackgroundSyncPlugin` queues requests in IndexedDB if connectivity is lost, replaying them when the network is restored.
+    *   This guarantees that data is eventually delivered to the webhook, enhancing resilience.
 
 ## Usage
 

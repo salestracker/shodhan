@@ -19,7 +19,7 @@ interface SearchEngineProps {
 }
 
 const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) => {
-  const { toggleHistory, addToHistory } = useAppContext();
+  const { toggleHistory, addToHistory, user } = useAppContext();
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [currentSearchResult, setCurrentSearchResult] = useState<SearchResult | null>(null);
@@ -49,7 +49,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     setSelectedHistoryId(null);
     
     try {
-      const results = await searchWithDeepSeek(query, parentResult);
+      const results = await searchWithDeepSeek(query, parentResult, user?.id);
       if (results.length > 0) {
         setCurrentSearchResult(results[0]);
         // Add to search history
@@ -87,7 +87,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     setCurrentSearchResult(updatedResultWithLoading);
     
     try {
-      const results = await searchWithDeepSeek(query, currentSearchResult);
+      const results = await searchWithDeepSeek(query, currentSearchResult, user?.id);
       if (results.length > 0) {
         // Add the follow-up result as a reply to the current result
         const updatedResult = {

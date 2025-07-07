@@ -17,6 +17,7 @@ An ADR is a document that captures an important architectural decision along wit
 8. [008-main-thread-service-worker-cache-data-communication.md](008-main-thread-service-worker-cache-data-communication.md) - Main thread-Service Worker cache data communication
 9. [009-hybrid-cache-sync-model.md](009-hybrid-cache-sync-model.md) - Hybrid cache synchronization model
 10. [010-robust-service-worker-dev-strategy.md](010-robust-service-worker-dev-strategy.md) - Robust Service Worker Development Strategy
+11. [011-anonymous-user-sign-in.md](011-anonymous-user-sign-in.md) - Anonymous User Sign-In with Supabase
 
 ## Template
 New ADRs should follow this template:

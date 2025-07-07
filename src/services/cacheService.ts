@@ -20,6 +20,7 @@ export const saveSearchResult = async (result: SearchResult): Promise<void> => {
       expires: Date.now() + CACHE_TTL,
       timestamp: Date.now()
     };
+    const fingerprintId = localStorage.getItem('searchGptFingerprintId') || 'unknown';
     
     logger.log('CacheService: Created cache entry with timestamp:', new Date(entry.timestamp).toISOString());
     // Save the main result
