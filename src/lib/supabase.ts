@@ -13,7 +13,7 @@ export const signInAnonymously = async () => {
     if (error) throw error;
     return data.user;
   } catch (error) {
-    console.error('Error signing in anonymously:', error);
+    logger.error('Error signing in anonymously:', error);
     return null;
   }
 };
