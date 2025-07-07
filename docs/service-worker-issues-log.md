@@ -160,13 +160,13 @@ This document logs, analyzes, and describes the series of issues encountered whi
 ## Current Status and Recommendations
 
 ### Current Status
-As of the latest actions, the cache synchronization mechanism is fully operational with a hybrid "push" and "pull" model. The key issues have been resolved:
-- The Service Worker filtering logic now correctly identifies new entries using a manual `for...of` loop.
-- The main thread sends the appropriate `CacheEntryForSync` objects to the Service Worker using `getAllCacheEntries()`.
+As of the latest actions, the cache synchronization mechanism is fully operational with a hybrid "push" and "pull" model as detailed in ADR 009. The key issues have been resolved:
+- The Service Worker filtering logic now correctly identifies new entries using a manual `for...of` loop (ADR 007).
+- The main thread sends the appropriate `CacheEntryForSync` objects to the Service Worker using `getAllCacheEntries()` (ADR 008).
 - The webhook sync failure (HTTP 400) was resolved by activating the Make.com scenario, with subsequent syncs succeeding with a `200 OK` status.
 - The `Timeout reached while waiting for cache data from main thread` warning persists but is benign and does not impact functionality.
-- The MIME type issue for Service Worker registration in development mode remains a challenge, but a static `public/service-worker-dev.js` workaround with `vite-plugin-pwa`'s `devOptions.enabled: false` has been implemented to bypass this problem.
-- The hybrid cache synchronization model has been implemented, combining immediate "push" notifications from `src/services/searchService.ts` and background "pull" sync via Background Sync API registration in `src/main.tsx`, ensuring robust sync across different browser environments.
+- The MIME type issue for Service Worker registration in development mode has been superseded by a robust strategy using `registerType: 'autoUpdate'` and `self.skipWaiting()` to ensure the latest Service Worker is active (ADR 010).
+- The hybrid cache synchronization model combines immediate "push" notifications via `CACHE_NEW_ENTRY` messages from `src/services/searchService.ts` and background "pull" sync via Background Sync API registration with 'sync-cache' in `src/main.tsx`, ensuring robust sync across different browser environments (ADR 009).
 
 ### Recommendations for Future Steps
 1.  **Monitor Service Worker Registration**: Continue to use the static `public/service-worker-dev.js` for development and monitor for any further MIME type issues. If necessary, explore additional Vite or `vite-plugin-pwa` configuration options to fully resolve this in the future.
@@ -178,4 +178,4 @@ As of the latest actions, the cache synchronization mechanism is fully operation
 
 ## Conclusion
 
-The journey to resolve Service Worker issues in SearchGPT has been complex, involving a wide range of challenges from MIME type errors and build failures to subtle lifecycle and data handling bugs. Each issue was systematically addressed through analysis, corrective actions, and iterative learning. The final, stable solution relies on the `injectManifest` strategy, a custom service worker (`src/service-worker.ts`), and a robust activation strategy (`self.skipWaiting()`) to ensure reliability. This log serves as both a historical record and a troubleshooting guide, ensuring that future developers can navigate similar challenges with greater efficiency and understanding. All major issues are now resolved, and the cache synchronization system is fully operational.
+The journey to resolve Service Worker issues in SearchGPT has been complex, involving a wide range of challenges from MIME type errors and build failures to subtle lifecycle and data handling bugs. Each issue was systematically addressed through analysis, corrective actions, and iterative learning as documented in ADRs 006 through 010. The final, stable solution relies on the `injectManifest` strategy, a custom service worker (`src/service-worker.ts`), and a robust activation strategy (`self.skipWaiting()`) to ensure reliability (ADR 010). The hybrid cache synchronization model enhances user experience with immediate push notifications and resilient background pull sync (ADR 009). This log serves as both a historical record and a troubleshooting guide, ensuring that future developers can navigate similar challenges with greater efficiency and understanding. All major issues are now resolved, and the cache synchronization system is fully operational.

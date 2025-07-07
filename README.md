@@ -9,6 +9,7 @@ An ai powered search GPT for searching and displaying results with caching and s
 - **AI-Powered Search**: Uses LLM API for comprehensive, cited answers
 - **Conversational Interface**: Supports follow-up questions with context preservation
 - **Smart Caching**: Redundant query prevention with localStorage-based caching
+- **Anonymous Authentication**: Privacy-preserving user sign-in with Supabase for session persistence
 - **Modern UI**: Built with Shadcn UI and Tailwind CSS
 
 ## Architecture
@@ -27,9 +28,9 @@ An ai powered search GPT for searching and displaying results with caching and s
 ### Service Worker and Cache Sync
 - **Purpose**: A critical component for background cache synchronization, ensuring instant, privacy-preserving search results by fingerprinting anonymous queries at the edge and persisting them for quick access.
 - **Mechanism**: Utilizes **Workbox** for robust background sync, queuing and retrying failed requests to a configured webhook. The Service Worker operates on a hybrid model with two sync triggers:
-  - **Push Model (Immediate Sync)**: The main application notifies the Service Worker of new cache entries for immediate synchronization, working across all browsers including Safari.
-  - **Pull Model (Background Sync)**: Where supported (e.g., Chrome), leverages the Background Sync API to sync data in the background, particularly when connectivity is restored, as a progressive enhancement.
-- **Data Flow**: The Service Worker requests cached data from the main thread, filters for new entries based on timestamps, and sends them to the webhook for orchestration, minimizing redundant API calls.
+  - **Push Model (Immediate Sync)**: The main application notifies the Service Worker of new cache entries via a `CACHE_NEW_ENTRY` message for immediate synchronization, working across all browsers including Safari.
+  - **Pull Model (Background Sync)**: Where supported (e.g., Chrome), leverages the Background Sync API registered with 'sync-cache' to sync data in the background, particularly when connectivity is restored, as a progressive enhancement.
+- **Data Flow**: The Service Worker handles both push and pull sync triggers, executing consistent logic to filter new cache entries based on timestamps and send them to the webhook for orchestration, minimizing redundant API calls.
 - **Further Reading**: For a detailed technical overview, implementation specifics, debugging, and troubleshooting, refer to [Cache Sync Implementation](docs/cache-sync-implementation.md).
 
 ## How It Works
@@ -151,10 +152,12 @@ These variables have been integrated into the codebase to replace hardcoded valu
 - `src/main.tsx` for the cache webhook URL.
 
 ## Roadmap
-- [ ] User authentication
+- [x] User authentication
 - [x] Search history
 - [ ] Multi-LLM support
 - [x] Advanced caching strategies
+- [ ] Profile linking across sessions/devices using UUID fingerprint ID TOTP mechanism
+- [ ] Store fingerprint ID and search results in Supabase for enhanced session persistence
 
 ## Contributing
 
