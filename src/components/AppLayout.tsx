@@ -8,7 +8,7 @@ import { logger } from '../utils/logger';
 import { useAppContext } from '@/contexts/AppContext';
 
 const AppLayout: React.FC = () => {
-  const { isHistoryOpen, toggleHistory, user } = useAppContext();
+  const { isHistoryOpen, toggleHistory, user, handleAnonymousSignIn } = useAppContext();
   
   // This function will be passed from SearchEngine
   let handleHistoryClick: (historyId: string, query: string) => void = () => {
@@ -40,16 +40,25 @@ const AppLayout: React.FC = () => {
           </div>
         </SheetContent>
         <div className="relative">
-          <div className="absolute top-4 right-4">
-            {user && user.is_anonymous && (
-              <Tooltip>
-                <TooltipTrigger>
-                  <Badge variant="outline" className="bg-background text-foreground">
-                    Anonymous
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>You are signed in anonymously for this session.</TooltipContent>
-              </Tooltip>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {user ? (
+              user.is_anonymous && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge variant="outline" className="bg-background text-foreground">
+                      Anonymous
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>You are signed in anonymously for this session.</TooltipContent>
+                </Tooltip>
+              )
+            ) : (
+              <button
+                onClick={handleAnonymousSignIn}
+                className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Sign In Anonymously
+              </button>
             )}
           </div>
           <SearchEngine setHandleHistoryClick={setHandleHistoryClick} />
