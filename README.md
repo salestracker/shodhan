@@ -7,8 +7,9 @@ An ai powered search GPT for searching and displaying results with caching and s
 
 ## Key Features
 - **AI-Powered Search**: Uses LLM API for comprehensive, cited answers
-- **Conversational Interface**: Supports follow-up questions with context preservation
+- **Conversational Interface**: Supports follow-up questions with context preservation  
 - **Smart Caching**: Redundant query prevention with localStorage-based caching
+- **Quick Cached Results**: Instant similar results from vector search ([docs](docs/quick-cached-results-implementation.md))
 - **Anonymous Authentication**: Privacy-preserving user sign-in with Supabase for session persistence
 - **Modern UI**: Built with Shadcn UI and Tailwind CSS
 
