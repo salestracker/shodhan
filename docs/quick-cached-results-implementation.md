@@ -42,11 +42,11 @@ graph TD
 ```typescript
 // Example API call
 async function cacheSimilarityQuery(query: string) {
-  const response = await fetch(CACHE_SIMILARITY_QUERY, {
+  const response = await fetch(CACHE_SIMILARITY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-make-apikey': process.env.VITE_MAKE_API_KEY
+      'x-make-apikey': process.env.VITE_CACHE_SIMILARITY_API_KEY
     },
     body: JSON.stringify({
       query,
@@ -61,8 +61,8 @@ async function cacheSimilarityQuery(query: string) {
 ### Environment Variables
 Add to `.env.local`:
 ```env
-VITE_CACHE_SIMILARITY_QUERY=your_make_webhook_url
-VITE_MAKE_API_KEY=your_make_api_key
+VITE_CACHE_SIMILARITY_QUERY_URL=your_webhook_url
+VITE_CACHE_SIMILARITY_API_KEY=your_api_key
 ```
 
 ## Supabase Tables
