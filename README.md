@@ -145,6 +145,8 @@ This project uses environment variables to manage sensitive information and conf
 - `VITE_SUPABASE_EDGE_FUNCTION_URL`: The URL for Supabase edge functions used in search operations.
 - `VITE_CACHE_SYNC_INTERVAL`: The interval (in milliseconds) for cache synchronization.
 - `VITE_CACHE_WEBHOOK_URL`: The webhook URL for cache data synchronization.
+- `VITE_CACHE_SIMILARITY_QUERY_URL`: The webhook URL used to perform similarity searches against cached results.
+- `VITE_CACHE_SIMILARITY_API_KEY`: API key sent in the `x-make-apikey` header for similarity queries.
 - `VITE_SW_MINIFY`: A boolean flag to determine if the Service Worker should be minified.
 
 These variables have been integrated into the codebase to replace hardcoded values, ensuring better security and configurability. The changes have been applied to:
