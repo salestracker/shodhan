@@ -49,15 +49,24 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     setSelectedHistoryId(null);
     
     try {
-      const results = await searchWithDeepSeek(query, parentResult, user?.id);
+      const { cachedResults, apiResults } = await searchWithDeepSeek(query, parentResult, user?.id);
+      
+      // Prioritize cached results if available, otherwise use API results
+      const results = cachedResults.length > 0 ? cachedResults : apiResults;
+      
       if (results.length > 0) {
-        setCurrentSearchResult(results[0]);
+        const [firstResult, ...remainingResults] = results;
+        setCurrentSearchResult({
+          ...firstResult,
+          replies: [...(firstResult.replies || []), ...remainingResults],
+          isCached: cachedResults.length > 0 // Mark if result came from cache
+        });
         // Add to search history
         addToHistory({
-          id: results[0].id,
+          id: firstResult.id,
           query: query,
           timestamp: Date.now(),
-          resultId: results[0].id
+          resultId: firstResult.id
         });
       }
     } catch (error) {
@@ -87,12 +96,19 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     setCurrentSearchResult(updatedResultWithLoading);
     
     try {
-      const results = await searchWithDeepSeek(query, currentSearchResult, user?.id);
+      const { cachedResults, apiResults } = await searchWithDeepSeek(query, currentSearchResult, user?.id);
+      
+      // Prioritize cached results if available, otherwise use API results
+      const results = cachedResults.length > 0 ? cachedResults : apiResults;
+      
       if (results.length > 0) {
-        // Add the follow-up result as a reply to the current result
+        // Add the follow-up results as replies to the current result
         const updatedResult = {
           ...currentSearchResult,
-          replies: [...(currentSearchResult.replies || []), results[0]],
+          replies: [...(currentSearchResult.replies || []), ...results.map(r => ({
+            ...r,
+            isCached: cachedResults.length > 0 // Mark if reply came from cache
+          }))],
           isReplying: false
         };
         setCurrentSearchResult(updatedResult);
