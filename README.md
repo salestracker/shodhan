@@ -145,7 +145,7 @@ This project uses environment variables to manage sensitive information and conf
 - `VITE_SUPABASE_EDGE_FUNCTION_URL`: The URL for Supabase edge functions used in search operations.
 - `VITE_CACHE_SYNC_INTERVAL`: The interval (in milliseconds) for cache synchronization.
 - `VITE_CACHE_WEBHOOK_URL`: The webhook URL for cache data synchronization.
-- `VITE_SW_MINIFY`: A boolean flag to determine if the Service Worker should be minified.
+- `VITE_SW_MINIFY`: Set to `false` to disable Service Worker minification. The Service Worker is minified by default in production. Use `npm run build:sw-unminified` to build without minification.
 
 These variables have been integrated into the codebase to replace hardcoded values, ensuring better security and configurability. The changes have been applied to:
 - `src/lib/supabase.ts` for Supabase URL and key.
