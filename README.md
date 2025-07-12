@@ -146,6 +146,8 @@ This project uses environment variables to manage sensitive information and conf
 - `VITE_CACHE_SYNC_INTERVAL`: The interval (in milliseconds) for cache synchronization.
 - `VITE_CACHE_WEBHOOK_URL`: The webhook URL for cache data synchronization.
 - `VITE_SW_MINIFY`: Set to `false` to disable Service Worker minification. The Service Worker is minified by default in production. Use `npm run build:sw-unminified` to build without minification.
+- `VITE_CACHE_SIMILARITY_QUERY_URL`: The endpoint for cache similarity webhook calls.
+- `VITE_CACHE_SIMILARITY_API_KEY`: The API key for the cache similarity service.
 
 These variables have been integrated into the codebase to replace hardcoded values, ensuring better security and configurability. The changes have been applied to:
 - `src/lib/supabase.ts` for Supabase URL and key.
@@ -153,7 +155,7 @@ These variables have been integrated into the codebase to replace hardcoded valu
 - `src/main.tsx` for the cache webhook URL.
 
 ## Roadmap
-- [x] User authentication
+- [x] Anonymous User authentication
 - [x] Search history
 - [ ] Multi-LLM support
 - [x] Advanced caching strategies
