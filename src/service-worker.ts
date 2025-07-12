@@ -53,8 +53,12 @@ const handleSync = async (data: SyncPayload) => {
 const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
 
 if (webhookUrl) {
+  const webhookUrlObj = new URL(webhookUrl);
   registerRoute(
-    ({ url, request }) => request.method === 'POST' && url.href === webhookUrl,
+    ({ url, request }) => 
+      request.method === 'POST' &&
+      url.origin === webhookUrlObj.origin &&
+      url.pathname === webhookUrlObj.pathname,
     new NetworkOnly({ plugins: [cacheSyncQueue] }),
     'POST'
   );
