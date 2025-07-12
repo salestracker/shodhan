@@ -37,11 +37,11 @@ const ThreadedSearchResult: React.FC<ThreadedSearchResultProps> = ({
     }
   };
 
-  const formatContent = (content: string, sources?: string) => {
+  const formatContent = (content: string, sources?: string | string[]) => {
     // Parse sources to create a map of citation numbers to URLs
     const citationMap: { [key: string]: string } = {};
     if (sources) {
-      const lines = sources.split('\n');
+      const lines = Array.isArray(sources) ? sources : sources.split('\n');
       lines.forEach(line => {
         const match = line.match(/^\[(\d+)\]\s*(?:\[.*?\]\((.*?)\)|.*)/);
         if (match) {
@@ -71,10 +71,31 @@ const ThreadedSearchResult: React.FC<ThreadedSearchResultProps> = ({
           ),
           text: ({ value }: { value: string }) => {
             // Replace citation numbers with superscript hyperlinks
-            return value.replace(/\[(\d+)\]/g, (match, number) => {
-              const url = citationMap[number] || '#';
-              return `<sup><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${number}]</a></sup>`;
-            });
+            const parts = value.split(/(\[\d+\])/g);
+            return (
+              <>
+                {parts.map((part, i) => {
+                  const match = part.match(/\[(\d+)\]/);
+                  if (match) {
+                    const number = match[1];
+                    const url = citationMap[number] || '#';
+                    return (
+                      <sup key={i}>
+                        <a 
+                          href={url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                        >
+                          [{number}]
+                        </a>
+                      </sup>
+                    );
+                  }
+                  return part;
+                })}
+              </>
+            );
           }
         }}
       >
