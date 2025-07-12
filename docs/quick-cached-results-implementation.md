@@ -42,7 +42,7 @@ graph TD
 ```typescript
 // Example API call
 async function cacheSimilarityQuery(query: string) {
-  const response = await fetch(CACHE_SIMILARITY_URL, {
+  const response = await fetch(process.env.VITE_CACHE_SIMILARITY_QUERY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
