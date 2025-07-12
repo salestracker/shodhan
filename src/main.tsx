@@ -7,9 +7,7 @@ import './utils/serviceWorkerClient'
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Adjust the path based on Vite build output for service worker
-    const swPath = import.meta.env.PROD ? '/sw.js' : '/dev-sw.js?dev-sw';
-    navigator.serviceWorker.register(swPath, { type: 'module' }).then(registration => {
+    navigator.serviceWorker.register('/sw.js', { type: 'module' }).then(registration => {
       logger.log('Service Worker registered with scope:', registration.scope);
       if (registration.sync) {
         registration.sync.register('sync-cache').catch(err => {
