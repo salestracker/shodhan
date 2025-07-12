@@ -1,8 +1,13 @@
 import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { NetworkOnly } from 'workbox-strategies';
+import { BackgroundSyncPlugin } from 'workbox-background-sync';
 import { logger } from './utils/logger';
 import type { SearchResult } from './types/search';
 
 declare const self: ServiceWorkerGlobalScope;
+
+const cacheSyncQueue = new BackgroundSyncPlugin('sync-cache');
 
 interface SyncPayload {
   webhookUrl: string;
@@ -45,6 +50,20 @@ const handleSync = async (data: SyncPayload) => {
   }
 };
 
+const webhookUrl = import.meta.env.VITE_CACHE_WEBHOOK_URL;
+
+if (webhookUrl) {
+  const webhookUrlObj = new URL(webhookUrl);
+  registerRoute(
+    ({ url, request }) => 
+      request.method === 'POST' &&
+      url.origin === webhookUrlObj.origin &&
+      url.pathname === webhookUrlObj.pathname,
+    new NetworkOnly({ plugins: [cacheSyncQueue] }),
+    'POST'
+  );
+}
+
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   const data = event.data as { type: string; payload?: SyncPayload };
   if (!data) return;
@@ -70,4 +89,11 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 self.addEventListener('install', () => {
   logger.log('SW: Installed. Forcing activation.');
   self.skipWaiting();
+});
+
+self.addEventListener('sync', event => {
+  if (event.tag === 'workbox-background-sync:sync-cache') {
+    logger.log('SW: Background sync event received');
+    // Workbox handles replaying queued requests automatically
+  }
 });
