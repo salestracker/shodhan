@@ -32,5 +32,6 @@ export interface SearchResult {
   isReplying?: boolean;
   isLoading?: boolean;
   isCached?: boolean;
+  isFallback?: boolean;
   rootId?: string;
 }

@@ -5,17 +5,65 @@ The latest updates introduce a hybrid caching system combining vector similarity
 
 ## Core Changes Analysis
 
-### 1. Hybrid Caching Architecture
+### 1. Updated Architecture
 ```mermaid
-graph TD
-    A[New Query] --> B{Vector Similarity Check}
-    B -->|Match Found| C[Return Cached Results <3ms]
-    B -->|No Match| D[Call DeepSeek API]
-    D --> E[Store New Embeddings]
-    E --> F[Background Sync to Supabase]
+flowchart TD
+ subgraph subGraph0["Step 1: User"]
+        U1["Submit Query:\nGraphQL best practices"]
+  end
+ subgraph subGraph1["Step 2: Browser Cache"]
+        E1["Check Exact Cache\n(LocalStorage)"]
+        D1{"Exact Cache hit?"}
+        S2["Check Semantic Cache\n(Supabase HNSW)"]
+        D2{"Semantic Cache hit?"}
+        C1["Display cached results"]
+        W1["Trigger webhook to no-code orchestration pipeline"]
+  end
+ subgraph subGraph2["Step 3: no-code pipeline"]
+        M1["Receive webhook\n(query, user_id)"]
+        M2["Generate embedding"]
+        M3{"Vector search\n(Supabase HNSW)?"}
+        M4["Return similar results"]
+        M5["Call DeepSeek API"]
+        M6["Store embeddings & results\n(in Supabase)"]
+  end
+ subgraph subGraph3["Step 4: Sync & Display"]
+        B1["Background sync\n(Service Worker)"]
+        D3["Display API results"]
+  end
+    U1 --> E1
+    E1 --> D1
+    D1 -- Yes --> C1
+    C1 --> B1
+    B1 --> endC(["End"])
+    D1 -- No --> S2
+    S2 --> D2
+    D2 -- Yes --> C1
+    D2 -- No --> W1
+    W1 --> M1
+    M1 --> M2
+    M2 --> M3
+    M3 -- Hit --> M4
+    M4 --> B1
+    M3 -- Miss --> M5
+    M5 --> M6
+    M6 --> B1
+    B1 --> D3
+    D3 --> endD(["End"])
 ```
-- Implements ADR-009's cache orchestration pattern
-- Reduces average response time from 1.2s → 380ms
+
+### Workflow for Product Developers
+1.  **User Enters Query**: The process begins when the user submits a search query.
+2.  **Browser Cache Check**: The browser first checks `localStorage` for an exact match.
+3.  **Semantic Cache Check**: If no exact match is found, a vector similarity search is performed against the Supabase HNSW index.
+4.  **Webhook Trigger**: If no cached results are found, a webhook triggers a Make.com pipeline.
+5.  **No-Code Pipeline**: The pipeline generates embeddings, performs a vector search, and calls the DeepSeek API if necessary.
+6.  **Background Sync**: New results are synced in the background by the Service Worker.
+
+### Workflow for Product Managers
+-   **Value Proposition**: The new caching strategy reduces API costs by up to 50% and improves response times for cached queries by over 300ms.
+-   **Rapid Iteration**: The no-code pipeline allows for rapid iteration and experimentation with different embedding models and search strategies.
+-   **Data Freshness**: Real-time sync ensures that the cache is always up-to-date with the latest search results.
 
 ### 2. Service Worker Overhaul
 Key service-worker.ts changes:

@@ -7,7 +7,10 @@ import './utils/serviceWorkerClient'
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { type: 'module' }).then(registration => {
+    const swPath = import.meta.env.MODE === 'development' 
+      ? '/dev-sw.js?dev-sw' 
+      : '/sw.js';
+    navigator.serviceWorker.register(swPath, { type: 'module' }).then(registration => {
       logger.log('Service Worker registered with scope:', registration.scope);
       if (registration.sync) {
         registration.sync.register('sync-cache').catch(err => {

@@ -148,7 +148,7 @@ export const searchWithDeepSeek = async (
     cachedResults: [],
     apiResults: deepSeekResults.length > 0 ? deepSeekResults : [
       {
-        id: 'fallback-1',
+        id: `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         title: `SearchGPT Results for: ${query}`,
         content: 'I\'m unable to find reliable information at this time. Please try again later or refine your search query.',
         confidence: 0,

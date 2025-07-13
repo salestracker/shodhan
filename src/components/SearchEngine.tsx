@@ -66,7 +66,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
         setCurrentSearchResult({
           ...firstResult,
           replies: [...(firstResult.replies || []), ...remainingResults],
-          isCached: cachedResults.length > 0 // Mark if result came from cache
+          isCached: similarResults.length > 0 // Mark if result came from cache
         });
         // Add to search history
         addToHistory({

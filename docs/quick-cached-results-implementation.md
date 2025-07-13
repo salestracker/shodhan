@@ -61,7 +61,7 @@ async function cacheSimilarityQuery(query: string) {
 ### Environment Variables
 Add to `.env.local`:
 ```env
-VITE_CACHE_SIMILARITY_QUERY_URL=your_webhook_url
+VITE_CACHE_SIMILARITY_QUERY=your_webhook_url
 VITE_CACHE_SIMILARITY_API_KEY=your_api_key
 ```
 
