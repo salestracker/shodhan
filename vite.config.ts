@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => ({
       srcDir: 'src',
       filename: 'service-worker.ts',
       registerType: 'autoUpdate',
+      minify: mode === 'production' && (process.env.VITE_SW_MINIFY || 'true') !== 'false',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       },
