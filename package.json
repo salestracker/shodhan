@@ -91,7 +91,7 @@
     "uuid": "^11.1.0",
     "vaul": "^0.9.3",
     "vite": "^7.0.4",
-    "vite-plugin-pwa": "^1.0.0",
+    "vite-plugin-pwa": "^0.18.0",
     "workbox-background-sync": "^7.3.0",
     "workbox-build": "^7.3.0",
     "zod": "^3.23.8"
