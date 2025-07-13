@@ -1,5 +1,6 @@
 import type { SearchResult, SearchHistoryItem } from '../types/search';
 import { logger } from '../utils/logger';
+import { sha512 as computeSha512 } from '../utils/hashUtils';
 
 interface CacheEntry {
   value: SearchResult;
@@ -246,19 +247,7 @@ export const clearCache = async (): Promise<void> => {
  * @param input The input string to hash.
  * @returns Promise resolving to the hexadecimal representation of the hash.
  */
-const computeSha512 = async (input: string): Promise<string> => {
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(input);
-    const hashBuffer = await crypto.subtle.digest('SHA-512', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex;
-  } catch (error) {
-    logger.error('Error computing SHA-512 hash:', error);
-    throw error;
-  }
-};
+// Removed duplicate SHA512 implementation - using hashUtils.ts
 
 /**
  * Normalizes a query string for comparison.

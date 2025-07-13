@@ -10,6 +10,10 @@ This document provides a technical overview of the cache synchronization mechani
 - LocalStorage caching  
 - [Quick Cached Results](quick-cached-results-implementation.md) (vector similarity search)
 
+## Vector Search Integration
+The vector similarity check shown in Figure 1 ([Caching Strategy Diagram](./caching-strategy-diagram.md)) 
+leverages Supabase's pgvector implementation with HNSW indexes as detailed in [ADR-013](../adr/013-cache-similarity-service.md).
+
 ## Purpose
 
 The cache sync system addresses the need for instant, privacy-preserving search results by fingerprinting anonymous queries at the edge, merging duplicates, and persisting them for quick access. It minimizes repeated LLM and vector searches by using a cache-aside orchestration pattern, ensuring sub-100 ms skeleton responses via edge cache hits while respecting PII compliance by storing only non-identifying fingerprints.

@@ -18,6 +18,9 @@ An ADR is a document that captures an important architectural decision along wit
 9. [009-hybrid-cache-sync-model.md](009-hybrid-cache-sync-model.md) - Hybrid cache synchronization model
 10. [010-robust-service-worker-dev-strategy.md](010-robust-service-worker-dev-strategy.md) - Robust Service Worker Development Strategy
 11. [011-anonymous-user-sign-in.md](011-anonymous-user-sign-in.md) - Anonymous User Sign-In with Supabase
+12. [012-custom-uuid-for-privacy-preserving-session-fingerprinting.md](012-custom-uuid-for-privacy-preserving-session-fingerprinting.md) - Custom UUID for Privacy-Preserving Session Fingerprinting
+13. [013-cache-similarity-service.md](013-cache-similarity-service.md) - Cache Similarity Service Implementation
+14. [014-error-handling-and-logging.md](014-error-handling-and-logging.md) - Error Handling and Logging Strategy
 
 ## Template
 New ADRs should follow this template:

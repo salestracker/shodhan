@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import SearchResults from './SearchResults';
+import CachedResults from './CachedResults';
 import { getSearchHistory, getConversationThread } from '@/services/cacheService';
 import { useAppContext } from '@/contexts/AppContext';
 import { Home, Brain, History, Sparkles } from 'lucide-react';
@@ -23,6 +24,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [currentSearchResult, setCurrentSearchResult] = useState<SearchResult | null>(null);
+  const [cachedResults, setCachedResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   
@@ -46,13 +48,18 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     if (!query.trim()) return;
     setIsLoading(true);
     setCurrentSearchResult(null);
+    setCachedResults([]);
     setSelectedHistoryId(null);
     
     try {
-      const { cachedResults, apiResults } = await searchWithDeepSeek(query, parentResult, user?.id);
+      const { cachedResults: similarResults, apiResults } = await searchWithDeepSeek(query, parentResult, user?.id);
       
+      if (similarResults.length > 0) {
+        setCachedResults(similarResults);
+      }
+
       // Prioritize cached results if available, otherwise use API results
-      const results = cachedResults.length > 0 ? cachedResults : apiResults;
+      const results = apiResults;
       
       if (results.length > 0) {
         const [firstResult, ...remainingResults] = results;
@@ -96,19 +103,25 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     setCurrentSearchResult(updatedResultWithLoading);
     
     try {
-      const { cachedResults, apiResults } = await searchWithDeepSeek(query, currentSearchResult, user?.id);
+      const { cachedResults: similarResults, apiResults } = await searchWithDeepSeek(query, currentSearchResult, user?.id);
       
-      // Prioritize cached results if available, otherwise use API results
-      const results = cachedResults.length > 0 ? cachedResults : apiResults;
+      // Show similar cached results if available
+      if (similarResults.length > 0) {
+        setCachedResults(similarResults);
+      }
+
+      // Always use API results for follow-ups to get fresh context
+      const results = apiResults;
       
       if (results.length > 0) {
         // Add the follow-up results as replies to the current result
         const updatedResult = {
           ...currentSearchResult,
-          replies: [...(currentSearchResult.replies || []), ...results.map(r => ({
-            ...r,
-            isCached: cachedResults.length > 0 // Mark if reply came from cache
-          }))],
+            replies: [...(currentSearchResult.replies || []), ...results.map(r => ({
+              ...r,
+              isCached: false, // Follow-ups always come from API
+              source: 'api' // Explicit source indicator
+            }))],
           isReplying: false
         };
         setCurrentSearchResult(updatedResult);
@@ -181,6 +194,10 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
           </div>
         )}
 
+        <CachedResults 
+          results={cachedResults}
+          onSelectResult={(result) => setCurrentSearchResult(result)}
+        />
         <SearchResults 
           result={currentSearchResult} 
           isLoading={isLoading}

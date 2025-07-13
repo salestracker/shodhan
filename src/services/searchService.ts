@@ -4,7 +4,7 @@ import {
   getConversationThread,
   fetchCachedResultsWithRetry // This function is not used in cacheService, will remove later if not needed
 } from './cacheService';
-import { checkCacheSimilarity } from './cacheSimilarityService'; // Corrected import
+import { findSimilarCachedResults } from './cacheSimilarityService';
 import { logger } from '../utils/logger';
 import { eventBus } from '../lib/eventBus';
 import type { SearchResult } from '../types/search';
@@ -44,62 +44,8 @@ const generateQueryHash = (q: string) => {
   return `root-${hash}`;
 };
 
-// Fetches results from the cache similarity service
-const getSimilarCachedResults = async (query: string, parentResult?: SearchResult, userId?: string): Promise<SearchResult[]> => {
-  if (!userId) {
-    logger.warn('No user ID provided, skipping cache similarity query.');
-    return [];
-  }
-
-  const content = parentResult ? `Follow-up to: ${parentResult.content.substring(0, 100)}...` : 'New query';
-  
-  // First call the webhook to generate embedding and store in cache
-  const CACHE_SIMILARITY_URL = import.meta.env.VITE_CACHE_SIMILARITY_QUERY_URL;
-  const CACHE_SIMILARITY_APIKEY = import.meta.env.VITE_CACHE_SIMILARITY_API_KEY;
-
-  if (!CACHE_SIMILARITY_URL || !CACHE_SIMILARITY_APIKEY) {
-    logger.warn('Cache similarity API URL or API Key not configured. Skipping cache similarity check.');
-    return [];
-  }
-
-  try {
-    // Call webhook to generate embedding
-    await fetch(CACHE_SIMILARITY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-make-apikey': CACHE_SIMILARITY_APIKEY,
-      },
-      body: JSON.stringify({
-        query,
-        content,
-        user_id: userId,
-      }),
-    });
-
-    // Poll for cached results with retries
-    const MAX_RETRIES = 5;
-    const RETRY_INTERVAL_MS = 1000;
-    let retries = 0;
-
-    while (retries < MAX_RETRIES) {
-      const cacheResponse = await checkCacheSimilarity(query, content);
-      
-      if (cacheResponse.cached && cacheResponse.results) {
-        logger.log(`Found ${cacheResponse.results.length} cached results for query:`, query);
-        return cacheResponse.results;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
-      retries++;
-    }
-
-    return []; // No cached results found after retries
-  } catch (error) {
-    logger.error('Error in getSimilarCachedResults:', error);
-    return [];
-  }
-};
+// This function is now replaced by the more robust cacheSimilarityService
+// const getSimilarCachedResults = ...
 
 // Fetches results from the DeepSeek API via Supabase
 const fetchFromDeepSeek = async (query: string, parentResult?: SearchResult, userId?: string): Promise<SearchResult[]> => {
@@ -177,37 +123,30 @@ export const searchWithDeepSeek = async (
 ): Promise<{ cachedResults: SearchResult[], apiResults: SearchResult[] }> => {
   const cacheKey = parentResult ? parentResult.id : generateQueryHash(query);
   
-  // Run both operations in parallel
-  const [cachedThread, similarCachedResults, deepSeekResults] = await Promise.all([
-    getConversationThread(cacheKey),
-    getSimilarCachedResults(query, parentResult, userId),
-    fetchFromDeepSeek(query, parentResult, userId).catch(e => {
-      logger.error('DeepSeek fetch error:', e);
-      return [];
-    })
-  ]);
-
-  // Handle cached thread results
+  // First, check for a direct hit in the local cache
+  const cachedThread = await getConversationThread(cacheKey);
   if (cachedThread) {
     if (parentResult) {
       const matchingReply = cachedThread.replies?.find(reply => reply.followUpQuery === query);
-      if (matchingReply) {
-        return {
-          cachedResults: [matchingReply],
-          apiResults: [] // No API results needed
-        };
-      }
+      if (matchingReply) return { cachedResults: [matchingReply], apiResults: [] };
     } else {
-      return {
-        cachedResults: [cachedThread],
-        apiResults: [] // No API results needed
-      };
+      return { cachedResults: [cachedThread], apiResults: [] };
     }
   }
 
-  // Return both cached and API results
+  // If no direct hit, check for similar results in the cache
+  if (userId) {
+    const similarResults = await findSimilarCachedResults({ query, userId });
+    if (similarResults.length > 0) {
+      return { cachedResults: similarResults, apiResults: [] };
+    }
+  }
+
+  // Finally, if no cached results, fetch from DeepSeek
+  const deepSeekResults = await fetchFromDeepSeek(query, parentResult, userId);
+
   return {
-    cachedResults: similarCachedResults,
+    cachedResults: [],
     apiResults: deepSeekResults.length > 0 ? deepSeekResults : [
       {
         id: 'fallback-1',

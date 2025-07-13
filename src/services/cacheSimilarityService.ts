@@ -1,168 +1,154 @@
 import { logger } from '../utils/logger';
 import { sha512 } from '../utils/hashUtils';
-import { supabase } from '../lib/supabase'; // Assuming supabase client is exported from here
-import type { CacheResult, SearchResult } from '../types/search'; // Import necessary types
-// import { useUser } from '../contexts/AppContext'; // Removed as userId is currently hardcoded
+import { supabase } from '../lib/supabase';
+import type { SearchResult } from '../types/search';
 
-/**
- * Represents a cached query result from the database.
- */
+// Define interfaces for data structures
+interface CacheSimilarityParams {
+  query: string;
+  userId: string;
+}
+
 interface CachedQueryResult {
   id: number;
-  created_at: string;
-  user_id: string;
   cache_id: number;
   user_query_hash: string;
 }
 
-/**
- * Represents an entry in the cache table.
- */
 interface CacheEntry {
   id: number;
-  created_at: string;
   cache_user_result: number;
-  query_hash: string;
-  embeddings: number[]; // Assuming vector type is represented as number array
+}
+
+// Custom Error for the service
+class CacheSimilarityError extends Error {
+  constructor(public code: string, message: string, public context?: object) {
+    super(message);
+    this.name = 'CacheSimilarityError';
+  }
+}
+
+// Constants for polling
+const SIMILARITY_POLL_INTERVAL = 1000; // 1 second
+const MAX_POLL_ATTEMPTS = 5;
+
+/**
+ * Fetches cached query results from Supabase.
+ * @param userId - The user's unique identifier.
+ * @param queryHash - The SHA512 hash of the user's query.
+ * @returns A promise that resolves to the query results.
+ */
+async function fetchCachedQueryResults(userId: string, queryHash: string) {
+  return supabase
+    .from('cachedQueryResults')
+    .select('id, cache_id, user_query_hash')
+    .eq('user_id', userId)
+    .eq('user_query_hash', queryHash);
 }
 
 /**
- * Represents a user result from the cacheUserResults table.
+ * Fetches full cache entries from Supabase.
+ * @param cacheIds - An array of cache IDs to fetch.
+ * @returns A promise that resolves to the cache entries.
  */
-interface CacheUserResult {
-  id: number;
-  created_at: string;
-  root_id: string;
-  parent_id: string | null;
-  followUpQuery: string | null;
-  content: string;
-  sources: string[] | null;
-  user_id: string;
-  fingerprint_id: string | null;
-  updated_at: string | null;
-  query: string | null;
+async function fetchCacheEntries(cacheIds: number[]) {
+  return supabase
+    .from('cache')
+    .select('id, cache_user_result')
+    .in('id', cacheIds);
 }
 
 /**
- * Checks for similar queries in the cache and retrieves results if found.
- * @param query The user's current query.
- * @param content The context content for the query.
- * @returns A Promise resolving to an object indicating if cached results were found and the results themselves.
+ * Fetches the final user-facing search results.
+ * @param userResultIds - An array of user result IDs to fetch.
+ * @returns A promise that resolves to the search results.
  */
-export const checkCacheSimilarity = async (
-  query: string,
-  content: string
-): Promise<{ cached: boolean; results?: SearchResult[] }> => {
-  const CACHE_SIMILARITY_URL = import.meta.env.VITE_CACHE_SIMILARITY_QUERY_URL;
-  const CACHE_SIMILARITY_APIKEY = import.meta.env.VITE_CACHE_SIMILARITY_API_KEY;
+async function fetchUserResults(userResultIds: number[]) {
+  return supabase
+    .from('cacheUserResults')
+    .select('id, content, sources, query, created_at')
+    .in('id', userResultIds);
+}
 
-  if (!CACHE_SIMILARITY_URL || !CACHE_SIMILARITY_APIKEY) {
-    logger.warn('Cache similarity API URL or API Key not configured. Skipping cache similarity check.');
-    return { cached: false };
+/**
+ * Polls for cached results with exponential backoff.
+ * @param userId - The user's unique identifier.
+ * @param queryHash - The SHA512 hash of the user's query.
+ * @returns A promise that resolves to the cached results or an error.
+ */
+async function pollForCachedResults(userId: string, queryHash: string): Promise<{ data: CachedQueryResult[] | null; error: Error | null }> {
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+    try {
+      const { data, error } = await fetchCachedQueryResults(userId, queryHash);
+      if (error) throw new CacheSimilarityError('CACHE-500', 'Failed to poll for results', { originalError: error });
+      if (data && data.length > 0) return { data, error: null };
+      await new Promise(resolve => setTimeout(resolve, SIMILARITY_POLL_INTERVAL * Math.pow(2, attempt)));
+    } catch (error) {
+      logger.error('Polling attempt failed:', { attempt, error });
+    }
+  }
+  return { data: null, error: new CacheSimilarityError('CACHE-404', 'Polling timed out') };
+}
+
+/**
+ * Main service function to find similar cached results.
+ * @param params - The query and user ID.
+ * @returns A promise that resolves to an array of search results.
+ */
+export const findSimilarCachedResults = async ({ query, userId }: CacheSimilarityParams): Promise<SearchResult[]> => {
+  const queryHash = await sha512(query);
+  const webhookUrl = import.meta.env.VITE_CACHE_SIMILARITY_QUERY;
+  const apiKey = import.meta.env.VITE_CACHE_SIMILARITY_API_KEY;
+
+  if (!webhookUrl || !apiKey) {
+    logger.warn('Cache similarity service is not configured.');
+    return [];
   }
 
-  // Get user ID from context or a global state. For now, using a placeholder.
-  // In a real application, you would get this from the authenticated user session.
-  const userId = '123e4567-e89b-12d3-a456-426614174000'; // Placeholder user ID
-
   try {
-    const userQueryHash = await sha512(query);
-    logger.log('Generated user query hash:', userQueryHash);
-
-    // Step 1: Call the webhook API to generate embedding and store in cache
-    logger.log('Calling cache similarity webhook...');
-    const webhookResponse = await fetch(CACHE_SIMILARITY_URL, {
+    // 1. Trigger the webhook to start the similarity search process
+    await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-make-apikey': CACHE_SIMILARITY_APIKEY,
-      },
-      body: JSON.stringify({
-        query,
-        content,
-        user_id: userId,
-      }),
+      headers: { 'Content-Type': 'application/json', 'x-make-apikey': apiKey },
+      body: JSON.stringify({ query, content: `Search query: ${query}`, user_id: userId, query_hash: queryHash }),
     });
 
-    if (!webhookResponse.ok) {
-      const errorText = await webhookResponse.text();
-      logger.error('Cache similarity webhook failed:', webhookResponse.status, errorText);
-      throw new Error(`Webhook API error: ${webhookResponse.statusText}`);
-    }
+    // 2. Poll for the results
+    const { data: cachedResults, error: pollError } = await pollForCachedResults(userId, queryHash);
+    if (pollError) throw pollError;
+    if (!cachedResults || cachedResults.length === 0) return [];
 
-    logger.log('Cache similarity webhook called successfully.');
+    // 3. Fetch the corresponding cache entries
+    const cacheIds = cachedResults.map(r => r.cache_id);
+    const { data: cacheEntries, error: entriesError } = await fetchCacheEntries(cacheIds);
+    if (entriesError) throw new CacheSimilarityError('CACHE-500', 'Failed to fetch cache entries', { originalError: entriesError });
+    if (!cacheEntries) return [];
 
-    // Step 2: Poll Supabase for cached results with retries
-    const MAX_RETRIES = 5;
-    const RETRY_INTERVAL_MS = 1000; // 1 second
+    // 4. Fetch the final user results
+    const userResultIds = cacheEntries.map(e => e.cache_user_result);
+    const { data: userResults, error: resultsError } = await fetchUserResults(userResultIds);
+    if (resultsError) throw new CacheSimilarityError('CACHE-500', 'Failed to fetch user results', { originalError: resultsError });
+    if (!userResults) return [];
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      logger.log(`Attempt ${attempt + 1} to fetch cached results for hash: ${userQueryHash}`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS)); // Wait before polling
+    // 5. Format and return the top 5 results
+    return userResults.slice(0, 5).map(result => ({
+      id: `cached-${result.id}`,
+      query: result.query || query,
+      title: `Cached Result for: ${result.query || query}`,
+      content: result.content,
+      sources: result.sources || [],
+      timestamp: new Date(result.created_at).getTime(),
+      isCached: true,
+      confidence: 0.9, // High confidence for cached results
+      category: 'Cached',
+    }));
 
-      const { data: cachedQueryResults, error: cachedQueryError } = await supabase
-        .from('cachedQueryResults')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('user_query_hash', userQueryHash);
-
-      if (cachedQueryError) {
-        logger.error('Error querying cachedQueryResults:', cachedQueryError);
-        continue; // Try again on error
-      }
-
-      if (cachedQueryResults && cachedQueryResults.length > 0) {
-        logger.log('Found cached query results:', cachedQueryResults);
-
-        // Step 3: Fetch matching results from 'cache' and 'cacheUserResults'
-        const cacheIds = cachedQueryResults.map(res => res.cache_id);
-        
-        const { data: cacheEntries, error: cacheError } = await supabase
-          .from('cache')
-          .select('*, cacheUserResults(*)') // Select all from cache and join cacheUserResults
-          .in('id', cacheIds);
-
-        if (cacheError) {
-          logger.error('Error querying cache table:', cacheError);
-          continue; // Try again on error
-        }
-
-        if (cacheEntries && cacheEntries.length > 0) {
-          logger.log('Found cache entries with user results:', cacheEntries);
-
-          // Map to SearchResult type and return top 5
-          const results: SearchResult[] = cacheEntries
-            .filter(entry => entry.cacheUserResults) // Ensure cacheUserResults is not null
-            .map(entry => {
-              const userResult = entry.cacheUserResults as CacheUserResult; // Cast to expected type
-              return {
-                id: userResult.root_id, // Use root_id as SearchResult ID
-                query: userResult.query || query, // Use original query or current query
-                content: userResult.content,
-                sources: userResult.sources || [],
-                parentId: userResult.parent_id || undefined,
-                replies: [], // Cached results are typically leaf nodes or initial results
-                isReplying: false,
-                timestamp: userResult.created_at,
-                confidence: 1, // Assuming high confidence for cached results
-                category: 'cached', // Indicate it's a cached result
-                title: userResult.query || query, // Use query as title for cached results
-              };
-            })
-            .slice(0, 5); // Limit to top 5 results
-
-          if (results.length > 0) {
-            logger.log('Returning cached results:', results);
-            return { cached: true, results };
-          }
-        }
-      }
-    }
-
-    logger.log('No cached results found after retries.');
-    return { cached: false };
   } catch (error) {
-    logger.error('Error in checkCacheSimilarity:', error);
-    return { cached: false };
+    if (error instanceof CacheSimilarityError) {
+      logger.error(`Cache Similarity Error: ${error.code}`, { message: error.message, context: error.context });
+    } else {
+      logger.error('An unexpected error occurred in the cache similarity service:', error);
+    }
+    return []; // Return empty array on error to prevent blocking the UI
   }
 };
