@@ -107,11 +107,17 @@ export const findSimilarCachedResults = async ({ query, userId }: CacheSimilarit
 
   try {
     // 1. Trigger the webhook to start the similarity search process
-    await fetch(webhookUrl, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-make-apikey': apiKey },
       body: JSON.stringify({ query, content: `Search query: ${query}`, user_id: userId, query_hash: queryHash }),
     });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const errorMessage = `Webhook failed: ${response.status} - ${errorBody}`;
+      logger.error(errorMessage);
+      throw new CacheSimilarityError('WEBHOOK-500', errorMessage);
+    }
 
     // 2. Poll for the results
     const { data: cachedResults, error: pollError } = await pollForCachedResults(userId, queryHash);

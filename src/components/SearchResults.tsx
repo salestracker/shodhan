@@ -102,7 +102,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ result, isLoading, onFoll
   }
 
   // Check if there are multiple cached results to display
-  const cachedResults = result.isCached ? [result, ...(result.replies || [])] : [];
+  const cachedResults = activeResult?.isCached ? [activeResult, ...(activeResult.replies || [])] : [];
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-8">
