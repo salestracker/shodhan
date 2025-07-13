@@ -2,7 +2,7 @@ import {
   saveSearchResult, 
   getSearchResult,
   getConversationThread,
-  fetchCachedResultsWithRetry // This function is not used in cacheService, will remove later if not needed
+// Removed unused import fetchCachedResultsWithRetry
 } from './cacheService';
 import { findSimilarCachedResults } from './cacheSimilarityService';
 import { logger } from '../utils/logger';
