@@ -1,8 +1,8 @@
 import { StrictMode } from 'react'
+import { logger } from './utils/logger';
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { logger } from './utils/logger'
 import './utils/serviceWorkerClient'
 
 if ('serviceWorker' in navigator) {

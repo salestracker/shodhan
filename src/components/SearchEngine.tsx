@@ -59,7 +59,7 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
       }
 
       // Prioritize cached results if available, otherwise use API results
-      const results = apiResults;
+      const results = similarResults.length > 0 ? similarResults : apiResults;
       
       if (results.length > 0) {
         const [firstResult, ...remainingResults] = results;
