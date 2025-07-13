@@ -53,9 +53,9 @@ const SearchEngine: React.FC<SearchEngineProps> = ({ setHandleHistoryClick }) =>
     
     try {
       const { cachedResults: similarResults, apiResults } = await searchWithDeepSeek(query, parentResult, user?.id);
-      
-      if (similarResults.length > 0) {
-        setCachedResults(similarResults);
+      setCachedResults(similarResults);
+      if (similarResults.length === 0) {
+        setCachedResults([]);
       }
 
       // Prioritize cached results if available, otherwise use API results
